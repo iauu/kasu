@@ -4,7 +4,9 @@ use serde::Deserialize;
 #[serde(tag = "type")]
 pub enum WebsocketEvent {
     #[serde(rename="user_typing")]
-    Typing(WebsocketUserTypingEvent)
+    Typing(WebsocketUserTypingEvent),
+    #[serde(rename="reconnect_url")]
+    ReconnectUrl(WebsocketReconnectUrlEvent),
 }
 
 #[derive(Clone, Debug, Deserialize)]
@@ -13,7 +15,14 @@ pub struct  WebsocketUserTypingEvent {
     channel_id: String,
     #[serde(default)]
     thread_ts: Option<String>,
-    id: usize,
+    #[serde(default)]
+    id: Option<usize>,
     #[serde(rename="user")]
     user_id: String
 }
+
+#[derive(Clone, Debug, Deserialize)]
+pub struct WebsocketReconnectUrlEvent {
+    url: String,
+}
+
