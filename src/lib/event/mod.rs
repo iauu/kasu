@@ -1,6 +1,6 @@
 use crate::lib::context::Context;
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub enum Event {}
 
 pub trait FromEvent: Send + Sync + 'static {
