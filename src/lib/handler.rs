@@ -1,9 +1,19 @@
 use std::future::Future;
+use async_trait::async_trait;
 use crate::lib::context::Context;
 use crate::lib::event::Event;
+use tokio::sync::broadcast::{Sender, Receiver};
 
+#[async_trait]
 pub trait EventHandler<Args> : Send + Sync + 'static {
-    fn call(&self, event: Event, context: Context) -> impl Future<Output = Option<()>> + Send;
+    async fn run(&self, mut rx: Receiver<(Event, Context)>) -> std::convert::Infallible {
+        loop {
+            let (event, context) = rx.recv().await.unwrap();
+            let _ = self.call(event, context).await;
+        }
+    }
+
+    async fn call(&self, event: Event, context: Context) -> Option<()>;
 }
 
 macro_rules! impl_event_handler {
@@ -11,6 +21,7 @@ macro_rules! impl_event_handler {
         ::paste::paste!{
             #[allow(non_snake_case)]
             #[allow(non_camel_case_types)]
+            #[async_trait]
             impl <F, Fut, __event $(, $arg_name)*> EventHandler<(__event, $($arg_name ,)*)>  for F
             where
                 F: Fn(__event, $($arg_name,)*) -> Fut + Send + Sync + 'static,
