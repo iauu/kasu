@@ -19,8 +19,7 @@ pub trait EventHandler<Args> : Send + Sync + 'static {
 macro_rules! impl_event_handler {
     ($($arg_name:ident)*) => {
         ::paste::paste!{
-            #[allow(non_snake_case)]
-            #[allow(non_camel_case_types)]
+            #[allow(non_snake_case, non_camel_case_types, unused)]
             #[async_trait]
             impl <F, Fut, __event $(, $arg_name)*> EventHandler<(__event, $($arg_name ,)*)>  for F
             where
@@ -32,14 +31,11 @@ macro_rules! impl_event_handler {
             )*
             {
                 async fn call(&self, event: $crate::lib::event::Event, context: $crate::lib::context::Context) -> Option<()> {
-                    let event = __event::from_event(event);
-                    if let Some(event) = event {
-                        $(
-                            let [<$arg_name _a>] = $arg_name::from_ctx(&context);
-                        )*
-                        return (self)(event, $([<$arg_name _a>], )*).await;
-                    }
-                    None
+                    let event = __event::from_event(event)?;
+                    $(
+                        let [<$arg_name _a>] = $arg_name::from_ctx(&context)?;
+                    )*
+                    (self)(event, $([<$arg_name _a>], )*).await
                 }
             }
         }
@@ -47,7 +43,9 @@ macro_rules! impl_event_handler {
 }
 
 macro_rules! multi_impl_event_handler {
-    () => {};
+    () => {
+        impl_event_handler!();
+    };
 
     ($head:ident $($tail:ident)*) => {
         multi_impl_event_handler!($($tail)*);
