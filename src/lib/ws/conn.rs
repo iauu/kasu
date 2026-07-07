@@ -3,7 +3,7 @@ use std::time::Instant;
 use futures_util::StreamExt;
 use tokio_tungstenite::connect_async;
 use tokio::sync::mpsc::{unbounded_channel, UnboundedReceiver, UnboundedSender};
-use crate::lib::ws::event::WebsocketEvent;
+use crate::lib::ws::event::{WebsocketEvent, WebsocketReconnectUrlEvent};
 use thiserror::Error;
 use serde_json;
 use tokio_retry::strategy::jitter;
@@ -76,4 +76,8 @@ pub async fn ws_task(client: Client) -> Infallible {
         }
         tokio::time::sleep(retry.next().unwrap()).await;
     }
+}
+
+pub async fn set_reconnect(event: WebsocketReconnectUrlEvent, client: Client) {
+    client.write().await.ws_reconnect_url.replace(event.url.clone());
 }

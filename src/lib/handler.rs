@@ -3,9 +3,10 @@ use async_trait::async_trait;
 use crate::lib::context::Context;
 use crate::lib::event::Event;
 use tokio::sync::broadcast::{Sender, Receiver};
+use crate::lib::dispatcher::EventDispatcher;
 
 #[async_trait]
-pub trait EventHandler<Args> : Send + Sync + Clone + 'static {
+pub trait EventHandler<Args, Ret> : Send + Sync + Clone + 'static {
     async fn run(&self, mut rx: Receiver<(Event, Context)>) -> std::convert::Infallible {
         loop {
             let (event, context) = rx.recv().await.unwrap();
@@ -16,15 +17,21 @@ pub trait EventHandler<Args> : Send + Sync + Clone + 'static {
     async fn call(&self, event: Event, context: Context) -> Option<()>;
 }
 
+pub trait AnyRes : Send + Sync + 'static {}
+
+
+impl<T: Send + Sync + 'static> AnyRes for T {}
+
 macro_rules! impl_event_handler {
     ($($arg_name:ident)*) => {
         ::paste::paste!{
             #[allow(non_snake_case, non_camel_case_types, unused)]
             #[async_trait]
-            impl <F, Fut, __event $(, $arg_name)*> EventHandler<(__event, $($arg_name ,)*)>  for F
+            impl <F, Fut, __event $(, $arg_name)*, R> EventHandler<(__event, $($arg_name ,)*), R>  for F
             where
                 F: Fn(__event, $($arg_name,)*) -> Fut + Send + Sync + Clone + 'static,
-                Fut: Future<Output = Option<()>> + Send + 'static,
+                Fut: Future<Output = R> + Send + 'static,
+                R: AnyRes + Send + Sync + 'static,
                 __event: $crate::lib::event::FromEvent,
             $(
                 $arg_name: $crate::lib::context::FromContext,
@@ -46,6 +53,8 @@ macro_rules! impl_event_handler {
     };
 }
 
+
+
 macro_rules! multi_impl_event_handler {
     () => {
         impl_event_handler!();
@@ -60,3 +69,13 @@ macro_rules! multi_impl_event_handler {
 }
 
 multi_impl_event_handler!(A0 A1 A2 A3 A4 A5 A6 A7 A8 A9 A10 A11 A12 A13 A14);
+
+pub fn spawn_handler<Args, Ret, H>(dispatcher: &EventDispatcher, handler: H)
+where
+    H: EventHandler<Args, Ret>,
+{
+    let rx = dispatcher.subscribe();
+    tokio::task::spawn(async move {
+        handler.run(rx).await;
+    });
+}

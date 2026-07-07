@@ -2,6 +2,7 @@ use std::ops::Deref;
 use std::sync::Arc;
 use async_lock::RwLock;
 use crate::lib::dispatcher::EventDispatcher;
+use crate::lib::handler::spawn_handler;
 
 #[derive(Debug)]
 pub struct ClientBase {
@@ -60,6 +61,7 @@ impl Client {
         tokio::task::spawn(async move {
             crate::lib::ws::conn::ws_task(client).await
         });
+        spawn_handler(&self.read().await.event_dispatcher, crate::lib::ws::conn::set_reconnect);
         loop {}
     }
 }

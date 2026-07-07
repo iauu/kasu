@@ -21,7 +21,7 @@ impl EventDispatcher {
         self.tx.send((event, context)).unwrap();
     }
 
-    fn subscribe(&self) -> Receiver<(Event, Context)> {
+    pub(crate) fn subscribe(&self) -> Receiver<(Event, Context)> {
         self.tx.subscribe()
     }
 }
