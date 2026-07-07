@@ -2,7 +2,7 @@ use tokio::sync::broadcast::{Sender, Receiver};
 use crate::lib::context::Context;
 use crate::lib::event::Event;
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct EventDispatcher {
     tx: Sender<(Event, Context)>
 }

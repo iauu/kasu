@@ -3,3 +3,4 @@ pub mod event;
 mod context;
 mod dispatcher;
 mod ws;
+mod client;
