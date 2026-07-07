@@ -5,7 +5,7 @@ use crate::lib::event::Event;
 use tokio::sync::broadcast::{Sender, Receiver};
 
 #[async_trait]
-pub trait EventHandler<Args> : Send + Sync + 'static {
+pub trait EventHandler<Args> : Send + Sync + Clone + 'static {
     async fn run(&self, mut rx: Receiver<(Event, Context)>) -> std::convert::Infallible {
         loop {
             let (event, context) = rx.recv().await.unwrap();
@@ -23,7 +23,7 @@ macro_rules! impl_event_handler {
             #[async_trait]
             impl <F, Fut, __event $(, $arg_name)*> EventHandler<(__event, $($arg_name ,)*)>  for F
             where
-                F: Fn(__event, $($arg_name,)*) -> Fut + Send + Sync + 'static,
+                F: Fn(__event, $($arg_name,)*) -> Fut + Send + Sync + Clone + 'static,
                 Fut: Future<Output = Option<()>> + Send + 'static,
                 __event: $crate::lib::event::FromEvent,
             $(
@@ -35,7 +35,11 @@ macro_rules! impl_event_handler {
                     $(
                         let [<$arg_name _a>] = $arg_name::from_ctx(&context)?;
                     )*
-                    (self)(event, $([<$arg_name _a>], )*).await
+                    let handler = self.clone();
+                    let join_handle = ::tokio::task::spawn(async move {
+                        let _ = (handler)(event, $([<$arg_name _a>], )*).await;
+                    });
+                    Some(())
                 }
             }
         }
