@@ -56,7 +56,7 @@ pub async fn ws_task(client: Client) -> Infallible {
         let mut rx = connect_ws(
             client.get_xoxc(),
             client.get_xoxd(),
-            client.read().unwrap().ws_reconnect_url.clone()
+            client.read().await.ws_reconnect_url.clone()
         ).await.unwrap();
         let start = Instant::now();
         'conn_loop: loop {
@@ -68,9 +68,9 @@ pub async fn ws_task(client: Client) -> Infallible {
                 }
             };
             let (event, context) = translate_to_ctx(message.into(), client.clone()).await;
-            client.read().unwrap().event_dispatcher.send(event, context);
+            client.read().await.event_dispatcher.send(event, context);
         }
-        if (start.elapsed().as_secs_f32() > 30f32) {
+        if start.elapsed().as_secs_f32() > 30f32 {
             retry = expo_backoff!();
             continue;
         }
