@@ -1,4 +1,5 @@
 use serde::Deserialize;
+use crate::lib::event::Event;
 
 #[derive(Clone, Debug, Deserialize)]
 #[serde(tag = "type")]
@@ -26,3 +27,8 @@ pub struct WebsocketReconnectUrlEvent {
     url: String,
 }
 
+impl Into<Event> for WebsocketEvent {
+    fn into(self) -> Event {
+        todo!()
+    }
+}

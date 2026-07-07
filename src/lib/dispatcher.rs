@@ -17,7 +17,7 @@ impl EventDispatcher {
         }
     }
 
-    fn send(&self, event: Event, context: Context) -> () {
+    pub(crate) fn send(&self, event: Event, context: Context) -> () {
         self.tx.send((event, context)).unwrap();
     }
 
