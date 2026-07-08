@@ -5,5 +5,5 @@ use serde::Deserialize;
 pub struct Env {
     pub xoxc: String,
     pub xoxd: String,
-    pub host: Host
+    pub host: String
 }

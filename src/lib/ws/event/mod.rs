@@ -183,7 +183,13 @@ impl ToMulti for WebsocketUserTypingEvent {
 }
 
 impl ToMulti for WebsocketReconnectUrlEvent {}
-impl ToMulti for WebsocketMessageEvent {}
+impl ToMulti for WebsocketMessageEvent {
+    fn get_multi(&self) -> Multi {
+        match self {
+            WebsocketMessageEvent::Incoming(event) => event.get_multi(),
+        }
+    }
+}
 
 impl ToMulti for WebsocketEvent {
     fn get_multi(&self) -> Multi {

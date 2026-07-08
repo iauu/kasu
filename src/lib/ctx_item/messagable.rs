@@ -6,7 +6,7 @@ use crate::lib::client::Client;
 use crate::lib::context::FromContext;
 use crate::lib::ctx_trait::{Sendable, ThreadSendable};
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Messageable {
     pub channel_id: SlackChannelId,
     pub thread_ts: Option<SlackTs>,
@@ -35,7 +35,7 @@ impl Sendable for Messageable {
 #[async_trait]
 impl ThreadSendable for Messageable {
     async fn reply_in_thread(&self, message: MessageData) -> Result<SlackTs, Error> {
-        self.client.read().await.api_client.chat_post_message(self.channel_id.clone(), self.thread_ts.clone().replace(self.message_ts.clone()), message).await
+        self.client.read().await.api_client.chat_post_message(self.channel_id.clone(), self.thread_ts.clone().or(Some(self.message_ts.clone())), message).await
     }
 }
 

@@ -6,7 +6,7 @@ use crate::lib::client::Client;
 use crate::lib::context::FromContext;
 use crate::lib::ctx_trait::Sendable;
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct PartialChannel {
     pub channel_id: SlackChannelId,
     pub client: Client

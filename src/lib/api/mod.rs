@@ -11,7 +11,7 @@ use crate::lib::api::model::PostMessageResponse;
 
 #[derive(Clone, Debug)]
 pub struct APIClient {
-    host: Host,
+    host: String,
     xoxc: String,
     xoxd: String,
     reqwest_client: Client
@@ -42,7 +42,7 @@ impl From<(String, Vec<SlackBlock>)> for MessageData {
 }
 
 impl APIClient {
-    pub fn new(xoxc: String, xoxd: String, host: Host) -> Self {
+    pub fn new(xoxc: String, xoxd: String, host: String) -> Self {
         let mut headers = HeaderMap::new();
 
         headers.insert("Cookie", format!("tz=0; d={}", xoxd).parse().unwrap());
@@ -73,11 +73,18 @@ impl APIClient {
             },
             None => form
         };
-        let req = self.reqwest_client.post(&format!("https://{}/channels/{}/postMessage", self.host, self.xoxd)).multipart(form);
+        let req = self.reqwest_client.post(&format!("https://{}/api/chat.postMessage", self.host)).multipart(form);
 
         let resp = req.send().await?;
+        let resp_text = resp.text().await?;
 
-        let model : PostMessageResponse = serde_json::from_str(&resp.text().await?)?;
+        let model : PostMessageResponse = match serde_json::from_str(&resp_text) {
+            Ok(resp) => resp,
+            Err(e) => {
+                tracing::error!("Failed request {e}, data: {resp_text}");
+                return Err(e.into());
+            }
+        };
 
         Ok(model.ts)
     }

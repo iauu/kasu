@@ -13,7 +13,7 @@ pub struct ClientBase {
     pub(crate) event_dispatcher: EventDispatcher,
     pub ws_reconnect_url: Option<String>,
     pub api_client: APIClient,
-    pub host: Host
+    pub host: String
 }
 
 #[derive(Clone, Debug)]
@@ -37,7 +37,7 @@ impl ClientBase {
         self.xoxd_token.clone()
     }
 
-    pub fn new(xoxc: String, xoxd: String, host: Host) -> Self {
+    pub fn new(xoxc: String, xoxd: String, host: String) -> Self {
         Self {
             xoxc_token: xoxc.clone(),
             xoxd_token: xoxd.clone(),
@@ -58,7 +58,7 @@ impl Client {
         self.read_blocking().get_xoxd()
     }
 
-    pub fn new(xoxc: String, xoxd: String, host: Host) -> Self {
+    pub fn new(xoxc: String, xoxd: String, host: String) -> Self {
         Self(Arc::new(RwLock::new(ClientBase::new(xoxc, xoxd, host))))
     }
 
