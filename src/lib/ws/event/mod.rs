@@ -35,36 +35,31 @@ pub struct  WebsocketUserTypingEvent {
     pub user_id: SlackUserId
 }
 
-impl FromEvent for WebsocketUserTypingEvent {
-    fn from_event(event: Event) -> Option<Self>
-    where
-        Self: Sized,
-    {
-        let ws: WebsocketEvent = WebsocketEvent::from_event(event)?;
-        match ws {
-            WebsocketEvent::Typing(event) => Some(event),
-            _ => None
+macro_rules! ws_from_event_impl {
+    ($name:ty, $event:ident) => {
+        impl $crate::lib::event::FromEvent for $name {
+            fn from_event(event: $crate::lib::event::Event) -> Option<Self>
+            where
+                Self: Sized,
+            {
+                let ws: WebsocketEvent = $crate::lib::ws::event::WebsocketEvent::from_event(event)?;
+                match ws {
+                    $crate::lib::ws::event::WebsocketEvent::$event(event) => Some(event),
+                    _ => None
+                }
+            }
         }
-    }
+    };
 }
+
+
+
 
 #[derive(Clone, Debug, Deserialize)]
 pub struct WebsocketReconnectUrlEvent {
     pub url: String,
 }
 
-impl FromEvent for WebsocketReconnectUrlEvent {
-    fn from_event(event: Event) -> Option<Self>
-    where
-        Self: Sized,
-    {
-        let ws: WebsocketEvent = WebsocketEvent::from_event(event)?;
-        match ws {
-            WebsocketEvent::ReconnectUrl(event) => Some(event),
-            _ => None
-        }
-    }
-}
 
 #[derive(Clone, Debug, Deserialize)]
 pub struct WebsocketMessageReceivedEvent {
@@ -86,6 +81,9 @@ pub struct WebsocketMessageReceivedEvent {
     ts: SlackTs
 }
 
+ws_from_event_impl!(WebsocketMessageReceivedEvent, Message);
+ws_from_event_impl!(WebsocketUserTypingEvent, Typing);
+ws_from_event_impl!(WebsocketReconnectUrlEvent, ReconnectUrl);
 
 impl Into<Event> for WebsocketEvent {
     fn into(self) -> Event {
