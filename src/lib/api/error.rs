@@ -1,0 +1,9 @@
+use thiserror::Error;
+
+#[derive(Debug, Error)]
+pub enum Error {
+    #[error("Failed serde serialization")]
+    SerdeJsonSerializationError(#[from] serde_json::Error),
+    #[error("Request error")]
+    RequestError(#[from] reqwest::Error),
+}

@@ -5,3 +5,4 @@ mod dispatcher;
 pub mod ws;
 pub(crate) mod client;
 mod blocks;
+pub mod api;
