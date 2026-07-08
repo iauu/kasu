@@ -75,8 +75,6 @@ async fn main() {
         .init();
 
     let client: Client = Client::new(env.xoxc, env.xoxd);
-
-
-
+    
     client.run().await;
 }

@@ -1,4 +1,5 @@
 use serde::Deserialize;
+use slack_morphism::{SlackChannelId, SlackClientMessageId, SlackTeamId, SlackTs, SlackUserId};
 use crate::lib::event::{Event, FromEvent};
 use crate::lib::blocks::SlackBlock;
 
@@ -9,6 +10,8 @@ pub enum WebsocketEvent {
     Typing(WebsocketUserTypingEvent),
     #[serde(rename="reconnect_url")]
     ReconnectUrl(WebsocketReconnectUrlEvent),
+    #[serde(rename="message")]
+    Message(WebsocketMessageReceivedEvent)
 }
 
 impl FromEvent for WebsocketEvent {
@@ -23,13 +26,13 @@ impl FromEvent for WebsocketEvent {
 #[derive(Clone, Debug, Deserialize)]
 pub struct  WebsocketUserTypingEvent {
     #[serde(rename="channel")]
-    pub channel_id: String,
+    pub channel_id: SlackChannelId,
     #[serde(default)]
-    pub thread_ts: Option<String>,
+    pub thread_ts: Option<SlackTs>,
     #[serde(default)]
     pub id: Option<usize>,
     #[serde(rename="user")]
-    pub user_id: String
+    pub user_id: SlackUserId
 }
 
 impl FromEvent for WebsocketUserTypingEvent {
@@ -65,9 +68,22 @@ impl FromEvent for WebsocketReconnectUrlEvent {
 
 #[derive(Clone, Debug, Deserialize)]
 pub struct WebsocketMessageReceivedEvent {
-    pub channel: String,
+    #[serde(rename="channel")]
+    pub channel_id: SlackChannelId,
     pub text: Option<String>,
-    pub blocks: Option<SlackBlock>
+    pub blocks: Option<SlackBlock>,
+    #[serde(rename="user")]
+    pub user_id: SlackUserId,
+    pub client_msg_id: SlackClientMessageId,
+    #[serde(rename="team")]
+    pub team_id: SlackTeamId,
+    #[serde(rename="source_team")]
+    pub source_team_id: SlackTeamId,
+    #[serde(rename="user_team")]
+    pub user_team_id: SlackTeamId,
+    pub suppress_notification: bool,
+    event_ts: String,
+    ts: SlackTs
 }
 
 
