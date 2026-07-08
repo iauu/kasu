@@ -78,6 +78,8 @@ pub async fn ws_task(client: Client) -> Infallible {
     }
 }
 
+#[instrument(level = "info", skip(client), fields(module = module_path!()), target = "ws_reconnect_url_set")]
 pub async fn set_reconnect(event: WebsocketReconnectUrlEvent, client: Client) {
+    tracing::info!("Websocket reconnect URL set to \'{}\'", event.url);
     client.write().await.ws_reconnect_url.replace(event.url.clone());
 }
