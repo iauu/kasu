@@ -9,12 +9,12 @@ use url::Host;
 use crate::lib::api::error::Error;
 use crate::lib::api::model::PostMessageResponse;
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct APIClient {
     host: Host,
     xoxc: String,
     xoxd: String,
-    reqwest_client: reqwest::Client
+    reqwest_client: Client
 }
 
 pub enum MessageData {
@@ -53,7 +53,7 @@ impl APIClient {
         }
     }
 
-    pub async fn chat_post_message(&self, channel: SlackChannelId, blocks: MessageData) -> Result<SlackTs, Error> {
+    pub async fn chat_post_message(&self, channel: SlackChannelId, thread_ts: Option<SlackTs>, blocks: MessageData) -> Result<SlackTs, Error> {
         let mut form = reqwest::multipart::Form::new()
             .text("token", self.xoxc.clone())
             .text("channel", channel.0)
@@ -67,12 +67,18 @@ impl APIClient {
                     .text("blocks", serde_json::to_string(&blocks)?)
             }
         };
-        let req = self.reqwest_client.post(&format!("{}/channels/{}/postMessage", self.host, self.xoxd)).multipart(form);
+        form = match thread_ts {
+            Some(ts) => {
+                form.text("thread_ts", ts.0)
+            },
+            None => form
+        };
+        let req = self.reqwest_client.post(&format!("https://{}/channels/{}/postMessage", self.host, self.xoxd)).multipart(form);
 
         let resp = req.send().await?;
-        
+
         let model : PostMessageResponse = serde_json::from_str(&resp.text().await?)?;
-        
+
         Ok(model.ts)
     }
 }

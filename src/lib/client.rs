@@ -1,6 +1,8 @@
 use std::ops::Deref;
 use std::sync::Arc;
 use async_lock::RwLock;
+use url::Host;
+use crate::lib::api::APIClient;
 use crate::lib::dispatcher::EventDispatcher;
 use crate::lib::handler::spawn_handler;
 
@@ -9,7 +11,9 @@ pub struct ClientBase {
     xoxc_token: String,
     xoxd_token: String,
     pub(crate) event_dispatcher: EventDispatcher,
-    pub ws_reconnect_url: Option<String>
+    pub ws_reconnect_url: Option<String>,
+    pub api_client: APIClient,
+    pub host: Host
 }
 
 #[derive(Clone, Debug)]
@@ -33,27 +37,29 @@ impl ClientBase {
         self.xoxd_token.clone()
     }
 
-    pub fn new(xoxc: String, xoxd: String) -> Self {
+    pub fn new(xoxc: String, xoxd: String, host: Host) -> Self {
         Self {
-            xoxc_token: xoxc,
-            xoxd_token: xoxd,
+            xoxc_token: xoxc.clone(),
+            xoxd_token: xoxd.clone(),
             event_dispatcher: EventDispatcher::new(4096),
-            ws_reconnect_url: None
+            ws_reconnect_url: None,
+            api_client: APIClient::new(xoxc, xoxd, host.clone()),
+            host
         }
     }
 }
 
 impl Client {
     pub(crate) fn get_xoxc(&self) -> String {
-        self.read_blocking().xoxc_token.clone()
+        self.read_blocking().get_xoxc()
     }
 
     pub(crate) fn get_xoxd(&self) -> String {
-        self.read_blocking().xoxd_token.clone()
+        self.read_blocking().get_xoxd()
     }
 
-    pub fn new(xoxc: String, xoxd: String) -> Self {
-        Self(Arc::new(RwLock::new(ClientBase::new(xoxc, xoxd))))
+    pub fn new(xoxc: String, xoxd: String, host: Host) -> Self {
+        Self(Arc::new(RwLock::new(ClientBase::new(xoxc, xoxd, host))))
     }
 
     pub async fn run(&self) -> ! {
