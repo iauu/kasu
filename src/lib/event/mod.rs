@@ -1,5 +1,4 @@
-use crate::lib::context::Context;
-use crate::lib::ctx_trait::ToChannelId;
+use crate::lib::ctx_trait::{Multi, ToMulti};
 use crate::lib::ws::event::WebsocketEvent;
 
 #[derive(Clone, Debug)]
@@ -17,10 +16,10 @@ impl FromEvent for Event {
     }
 }
 
-impl ToChannelId for Event {
-    fn get_channel_id(&self) -> Option<slack_morphism::SlackChannelId> {
+impl ToMulti for Event {
+    fn get_multi(&self) -> Multi {
         match self {
-            Event::Websocket(event) => event.get_channel_id(),
+            Event::Websocket(event) => event.get_multi(),
         }
     }
 }

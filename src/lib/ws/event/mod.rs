@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use slack_morphism::{SlackAppId, SlackBotId, SlackChannelId, SlackClientMessageId, SlackTeamId, SlackTs, SlackUserId};
 use crate::lib::event::{Event, FromEvent};
 use crate::lib::blocks::SlackBlock;
-use crate::lib::ctx_trait::ToChannelId;
+use crate::lib::ctx_trait::{Multi, ToChannelId, ToMulti};
 
 #[derive(Clone, Debug, Deserialize)]
 #[serde(tag = "type")]
@@ -106,7 +106,8 @@ pub struct WebsocketMessageReceivedEvent {
     #[serde(default)]
     pub suppress_notification: bool,
     event_ts: String,
-    ts: SlackTs
+    ts: SlackTs,
+    thread_ts: Option<SlackTs>
 }
 
 // #[derive(Clone, Debug, Deserialize)]
@@ -159,27 +160,37 @@ ws_from_event_impl!(WebsocketUserTypingEvent, Typing);
 ws_from_event_impl!(WebsocketReconnectUrlEvent, ReconnectUrl);
 ws_message_from_event_impl!(WebsocketMessageReceivedEvent, Incoming);
 
-impl ToChannelId for WebsocketMessageReceivedEvent {
-    fn get_channel_id(&self) -> Option<SlackChannelId> {
-        Some(self.channel_id.clone())
+impl ToMulti for WebsocketMessageReceivedEvent {
+    fn get_multi(&self) -> Multi {
+        Multi {
+            channel_id: Some(self.channel_id.clone()),
+            thread_ts: self.thread_ts.clone(),
+            message_ts: Some(self.ts.clone()),
+            user_id: Some(self.user_id.clone())
+        }
     }
 }
 
-impl ToChannelId for WebsocketUserTypingEvent {
-    fn get_channel_id(&self) -> Option<SlackChannelId> {
-        Some(self.channel_id.clone())
+impl ToMulti for WebsocketUserTypingEvent {
+    fn get_multi(&self) -> Multi {
+        Multi {
+            channel_id: Some(self.channel_id.clone()),
+            thread_ts: self.thread_ts.clone(),
+            message_ts: None,
+            user_id: Some(self.user_id.clone())
+        }
     }
 }
 
-impl ToChannelId for WebsocketReconnectUrlEvent {}
-impl ToChannelId for WebsocketMessageEvent {}
+impl ToMulti for WebsocketReconnectUrlEvent {}
+impl ToMulti for WebsocketMessageEvent {}
 
-impl ToChannelId for WebsocketEvent {
-    fn get_channel_id(&self) -> Option<SlackChannelId> {
+impl ToMulti for WebsocketEvent {
+    fn get_multi(&self) -> Multi {
         match self {
-            WebsocketEvent::Message(event) => event.get_channel_id(),
-            WebsocketEvent::Typing(event) => event.get_channel_id(),
-            WebsocketEvent::ReconnectUrl(event) => event.get_channel_id(),
+            WebsocketEvent::Message(event) => event.get_multi(),
+            WebsocketEvent::Typing(event) => event.get_multi(),
+            WebsocketEvent::ReconnectUrl(event) => event.get_multi(),
         }
     }
 }
