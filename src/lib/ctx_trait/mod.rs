@@ -1,11 +1,13 @@
 mod to_channel;
 mod to_slack_ts;
 mod to_slack_thread_ts;
+pub mod sendable;
 
 use slack_morphism::{SlackChannelId, SlackTs, SlackUserId};
 pub use to_channel::ToChannelId;
 pub use to_slack_ts::ToMessageTs;
 pub use to_slack_thread_ts::ToThreadTs;
+pub use sendable::{Sendable, ThreadSendable};
 
 #[derive(Clone, Debug, Default)]
 pub struct Multi {
