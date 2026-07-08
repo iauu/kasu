@@ -1,0 +1,7 @@
+services:
+  kasu:
+    build: .
+    image: ghcr.io/iauu/kasu:latest
+    restart: unless-stopped
+    env_file:
+      - .env
