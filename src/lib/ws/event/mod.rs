@@ -1,5 +1,6 @@
 use serde::Deserialize;
 use crate::lib::event::{Event, FromEvent};
+use crate::lib::blocks::SlackBlock;
 
 #[derive(Clone, Debug, Deserialize)]
 #[serde(tag = "type")]
@@ -61,6 +62,14 @@ impl FromEvent for WebsocketReconnectUrlEvent {
         }
     }
 }
+
+#[derive(Clone, Debug, Deserialize)]
+pub struct WebsocketMessageReceivedEvent {
+    pub channel: String,
+    pub text: Option<String>,
+    pub blocks: Option<SlackBlock>
+}
+
 
 impl Into<Event> for WebsocketEvent {
     fn into(self) -> Event {
