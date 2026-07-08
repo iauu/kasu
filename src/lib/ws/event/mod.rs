@@ -1,5 +1,6 @@
-use serde::Deserialize;
-use slack_morphism::{SlackChannelId, SlackClientMessageId, SlackTeamId, SlackTs, SlackUserId};
+use std::collections::HashMap;
+use serde::{Deserialize, Serialize};
+use slack_morphism::{SlackAppId, SlackBotId, SlackChannelId, SlackClientMessageId, SlackTeamId, SlackTs, SlackUserId};
 use crate::lib::event::{Event, FromEvent};
 use crate::lib::blocks::SlackBlock;
 
@@ -11,7 +12,7 @@ pub enum WebsocketEvent {
     #[serde(rename="reconnect_url")]
     ReconnectUrl(WebsocketReconnectUrlEvent),
     #[serde(rename="message")]
-    Message(WebsocketMessageReceivedEvent)
+    Message(WebsocketMessageEvent)
 }
 
 impl FromEvent for WebsocketEvent {
@@ -52,6 +53,23 @@ macro_rules! ws_from_event_impl {
     };
 }
 
+macro_rules! ws_message_from_event_impl {
+    ($name:ty, $event:ident) => {
+        impl $crate::lib::event::FromEvent for $name {
+            fn from_event(event: $crate::lib::event::Event) -> Option<Self>
+            where
+                Self: Sized,
+            {
+                let ws: WebsocketMessageEvent = $crate::lib::ws::event::WebsocketMessageEvent::from_event(event)?;
+                match ws {
+                    $crate::lib::ws::event::WebsocketMessageEvent::$event(event) => Some(event),
+                    _ => None
+                }
+            }
+        }
+    };
+}
+
 
 
 
@@ -60,30 +78,85 @@ pub struct WebsocketReconnectUrlEvent {
     pub url: String,
 }
 
+#[derive(Clone, Debug, Deserialize)]
+#[serde(untagged)]
+pub enum WebsocketMessageEvent {
+    Incoming(WebsocketMessageReceivedEvent),
+    // SubTyped
+}
 
 #[derive(Clone, Debug, Deserialize)]
 pub struct WebsocketMessageReceivedEvent {
+    #[serde(flatten)]
+    pub bot: Option<WebsocketMessageReceivedBotMetadata>,
     #[serde(rename="channel")]
     pub channel_id: SlackChannelId,
     pub text: Option<String>,
-    pub blocks: Option<SlackBlock>,
+    pub blocks: Option<Vec<SlackBlock>>,
     #[serde(rename="user")]
     pub user_id: SlackUserId,
-    pub client_msg_id: SlackClientMessageId,
+    pub client_msg_id: Option<SlackClientMessageId>,
     #[serde(rename="team")]
     pub team_id: SlackTeamId,
     #[serde(rename="source_team")]
     pub source_team_id: SlackTeamId,
     #[serde(rename="user_team")]
     pub user_team_id: SlackTeamId,
+    #[serde(default)]
     pub suppress_notification: bool,
     event_ts: String,
     ts: SlackTs
 }
 
-ws_from_event_impl!(WebsocketMessageReceivedEvent, Message);
+// #[derive(Clone, Debug, Deserialize)]
+// pub struct WebsocketMessageSubtypedEvent {
+//     #[serde(rename="channel")]
+//     pub channel_id: SlackChannelId,
+//     pub text: Option<String>,
+//     pub blocks: Option<Vec<SlackBlock>>,
+//     #[serde(rename="user")]
+//     pub user_id: SlackUserId,
+//     pub client_msg_id: Option<SlackClientMessageId>,
+//     #[serde(rename="team")]
+//     pub team_id: SlackTeamId,
+//     #[serde(rename="source_team")]
+//     pub source_team_id: SlackTeamId,
+//     #[serde(rename="user_team")]
+//     pub user_team_id: SlackTeamId,
+//     #[serde(default)]
+//     pub suppress_notification: bool,
+//     event_ts: String,
+//     ts: SlackTs
+// }
+
+#[derive(Clone, Debug, Deserialize)]
+pub struct WebsocketMessageReceivedBotMetadata {
+    pub subtype: BotMessageTag,
+    pub bot_id: SlackBotId,
+    pub bot_profile: BotProfile
+}
+
+#[derive(Clone, Debug, Deserialize)]
+pub struct BotProfile {
+    pub id: SlackBotId,
+    pub deleted: bool,
+    pub name: String,
+    pub updated: i64,
+    pub app_id: SlackAppId,
+    pub team_id: SlackTeamId,
+    pub icons: Option<HashMap<String, String>>,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+#[serde(rename_all = "snake_case")]
+pub enum BotMessageTag {
+    BotMessage,
+}
+
+ws_from_event_impl!(WebsocketMessageEvent, Message);
 ws_from_event_impl!(WebsocketUserTypingEvent, Typing);
 ws_from_event_impl!(WebsocketReconnectUrlEvent, ReconnectUrl);
+ws_message_from_event_impl!(WebsocketMessageReceivedEvent, Incoming);
 
 impl Into<Event> for WebsocketEvent {
     fn into(self) -> Event {

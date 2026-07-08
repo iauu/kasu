@@ -7,11 +7,12 @@ use urlencoding;
 
 mod lib;
 mod env;
-
+mod handlers;
 
 use std::io;
 use std::ptr::replace;
 use tracing_subscriber::{EnvFilter, prelude::*};
+use crate::lib::handler::spawn_handler;
 
 struct RedactingWriter<W> {
     inner: W,
@@ -75,6 +76,8 @@ async fn main() {
         .init();
 
     let client: Client = Client::new(env.xoxc, env.xoxd);
-    
+
+    spawn_handler(&client.read().await.event_dispatcher, handlers::test_msg_listen::test_msg_listen);
+
     client.run().await;
 }

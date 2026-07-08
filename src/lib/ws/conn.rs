@@ -1,5 +1,5 @@
 use std::convert::Infallible;
-use std::time::Instant;
+use std::time::{Duration, Instant};
 use futures_util::StreamExt;
 use tokio_tungstenite::connect_async;
 use tokio::sync::mpsc::{unbounded_channel, UnboundedReceiver, UnboundedSender};
@@ -12,6 +12,7 @@ use tracing::instrument;
 use crate::lib::client::Client;
 use crate::lib::context::translate_to_ctx;
 use crate::lib::event::Event;
+use tokio::sync::mpsc::error::TryRecvError;
 
 #[derive(Error, Debug)]
 pub enum WebsocketInitialConnectionError {
@@ -76,8 +77,16 @@ pub async fn ws_task(client: Client) -> Infallible {
             let message = match rx.try_recv() {
                 Ok(message) => message,
                 Err(e) => {
-                    tracing::error!(?e, "websocket error");
-                    break 'conn_loop;
+                    match e {
+                        TryRecvError::Empty => {
+                            tokio::time::sleep(Duration::from_millis(10)).await;
+                            continue 'conn_loop;
+                        },
+                        e @ _ => {
+                            tracing::error!(?e, "websocket error");
+                            break 'conn_loop;
+                        }
+                    }
                 }
             };
             let (event, context) = translate_to_ctx(message.into(), client.clone()).await;
