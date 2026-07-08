@@ -3,6 +3,7 @@ use serde::{Deserialize, Serialize};
 use slack_morphism::{SlackAppId, SlackBotId, SlackChannelId, SlackClientMessageId, SlackTeamId, SlackTs, SlackUserId};
 use crate::lib::event::{Event, FromEvent};
 use crate::lib::blocks::SlackBlock;
+use crate::lib::ctx_trait::ToChannelId;
 
 #[derive(Clone, Debug, Deserialize)]
 #[serde(tag = "type")]
@@ -157,6 +158,31 @@ ws_from_event_impl!(WebsocketMessageEvent, Message);
 ws_from_event_impl!(WebsocketUserTypingEvent, Typing);
 ws_from_event_impl!(WebsocketReconnectUrlEvent, ReconnectUrl);
 ws_message_from_event_impl!(WebsocketMessageReceivedEvent, Incoming);
+
+impl ToChannelId for WebsocketMessageReceivedEvent {
+    fn get_channel_id(&self) -> Option<SlackChannelId> {
+        Some(self.channel_id.clone())
+    }
+}
+
+impl ToChannelId for WebsocketUserTypingEvent {
+    fn get_channel_id(&self) -> Option<SlackChannelId> {
+        Some(self.channel_id.clone())
+    }
+}
+
+impl ToChannelId for WebsocketReconnectUrlEvent {}
+impl ToChannelId for WebsocketMessageEvent {}
+
+impl ToChannelId for WebsocketEvent {
+    fn get_channel_id(&self) -> Option<SlackChannelId> {
+        match self {
+            WebsocketEvent::Message(event) => event.get_channel_id(),
+            WebsocketEvent::Typing(event) => event.get_channel_id(),
+            WebsocketEvent::ReconnectUrl(event) => event.get_channel_id(),
+        }
+    }
+}
 
 impl Into<Event> for WebsocketEvent {
     fn into(self) -> Event {
