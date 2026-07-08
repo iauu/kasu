@@ -776,7 +776,9 @@ dependencies = [
  "paste",
  "reqwest",
  "serde",
+ "serde-env",
  "serde_json",
+ "slack-blocks",
  "thiserror",
  "tokio",
  "tokio-retry",
@@ -1403,6 +1405,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "serde-env"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f9d29a4f822b7a7e7eada47da087a9d29d9b266dba45edc375fdc700965860d7"
+dependencies = [
+ "serde",
+]
+
+[[package]]
 name = "serde_core"
 version = "1.0.228"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1492,6 +1503,15 @@ name = "slab"
 version = "0.4.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0c790de23124f9ab44544d7ac05d60440adc586479ce501c1d6d7da3cd8c9cf5"
+
+[[package]]
+name = "slack-blocks"
+version = "0.25.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8fd18b936dc0a7717f7067adf4395faa138ab7bec355d26f6192edd8aa92d5b0"
+dependencies = [
+ "serde",
+]
 
 [[package]]
 name = "smallvec"

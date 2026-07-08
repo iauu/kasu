@@ -28,7 +28,7 @@ pub enum WebsocketInitialConnectionError {
 pub async fn connect_ws(xoxc: String, xoxd: String, url: Option<String>) -> Result<UnboundedReceiver<WebsocketEvent>, WebsocketInitialConnectionError> {
     let url = match url {
         Some(url) => url,
-        None => format!("wss-primary.slack.com/?token={}", xoxc)
+        None => format!("wss://wss-primary.slack.com/?token={}", xoxc)
     };
     let mut request = url.into_client_request()?;
     request.headers_mut().insert("Cookie", format!("tz=0; d={}", xoxd).parse().unwrap());
@@ -36,10 +36,23 @@ pub async fn connect_ws(xoxc: String, xoxd: String, url: Option<String>) -> Resu
     let (tx, rx) = unbounded_channel::<WebsocketEvent>();
     tokio::spawn(async move  {
         while let Some(message) = socket.next().await {
-            let message = message.unwrap();
+            let message = match message {
+                Ok(msg) => msg,
+                Err(e) => {
+                    tracing::warn!("Websocket error: {}", e);
+                    panic!("Websocket error: {}", e);
+                }
+            };
             let message = message.to_text().unwrap();
-            let event: WebsocketEvent = serde_json::from_str(message).unwrap(); // TODO: Don't unwrap this
-            tx.send(event).unwrap();
+            let result: Result<WebsocketEvent, _> = serde_json::from_str(message);
+            match result {
+                Ok(event) => {
+                    tx.send(event).unwrap();
+                },
+                Err(e) => {
+                    tracing::warn!("Failed to parse event. msg: \'{}\', error: {:?}", message, e)
+                }
+            }
         }
     });
     Ok(rx)

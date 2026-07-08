@@ -17,3 +17,5 @@ tracing = "0.1.44"
 tracing-subscriber = { version = "0.3.23", features = ["env-filter"] }
 tokio-retry = "0.3.2"
 async-lock = "3.4.2"
+serde-env = "0.3.0"
+slack-blocks = "0.25.0"

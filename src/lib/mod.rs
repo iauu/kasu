@@ -3,4 +3,4 @@ pub mod event;
 mod context;
 mod dispatcher;
 mod ws;
-mod client;
+pub(crate) mod client;
