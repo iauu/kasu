@@ -1,13 +1,16 @@
 pub mod error;
 mod model;
+pub mod common;
+
+pub use crate::lib::api::common::*;
 
 use reqwest::Client;
 use reqwest::header::HeaderMap;
 use slack_morphism::blocks::SlackBlock;
-use slack_morphism::{SlackChannelId, SlackTs};
+use slack_morphism::{SlackChannelId, SlackTs, SlackUserId};
 use url::Host;
 use crate::lib::api::error::Error;
-use crate::lib::api::model::PostMessageResponse;
+use crate::lib::api::model::{ListAssignmentsResponse, PostMessageResponse};
 
 #[derive(Clone, Debug)]
 pub struct APIClient {
@@ -17,28 +20,20 @@ pub struct APIClient {
     reqwest_client: Client
 }
 
-pub enum MessageData {
-    Raw(String),
-    Blockkit(Vec<SlackBlock>),
-    Multi(String, Vec<SlackBlock>)
-}
-
-impl From<String> for MessageData {
-    fn from(s: String) -> Self {
-        Self::Raw(s)
-    }
-}
-
-impl From<Vec<SlackBlock>> for MessageData {
-    fn from(value: Vec<SlackBlock>) -> Self {
-        Self::Blockkit(value)
-    }
-}
-
-impl From<(String, Vec<SlackBlock>)> for MessageData {
-    fn from(value: (String, Vec<SlackBlock>)) -> Self {
-        Self::Multi(value.0, value.1)
-    }
+macro_rules! parse_resp {
+    ($text:expr, $t:ty) => {
+        {
+            let text_ref: &str = $text.as_ref();
+            let model: $t = match serde_json::from_str(text_ref) {
+                Ok(resp) => resp,
+                Err(e) => {
+                    tracing::error!("Failed request {e}, data: {text_ref}");
+                    return Err(e.into());
+                }
+            };
+            model
+        }
+    };
 }
 
 impl APIClient {
@@ -77,15 +72,25 @@ impl APIClient {
 
         let resp = req.send().await?;
         let resp_text = resp.text().await?;
-
-        let model : PostMessageResponse = match serde_json::from_str(&resp_text) {
-            Ok(resp) => resp,
-            Err(e) => {
-                tracing::error!("Failed request {e}, data: {resp_text}");
-                return Err(e.into());
-            }
-        };
+        let model = parse_resp!(resp_text, PostMessageResponse);
 
         Ok(model.ts)
     }
+
+    pub async fn get_channel_manager(&self, channel: SlackChannelId) -> Result<Vec<SlackUserId>, Error> {
+        let form = reqwest::multipart::Form::new()
+            .text("token", self.xoxc.clone())
+            .text("entity_id", channel.0);
+        let req = self.reqwest_client.post(&format!("https://{}/api/admin.roles.entity.listAssignments", self.host)).multipart(form);
+        let resp = req.send().await?;
+        let resp_text = resp.text().await?;
+        let model = parse_resp!(resp_text, ListAssignmentsResponse);
+
+        let assignment = model.role_assignments.into_iter().filter(|assignment| assignment.role_id == "Rl0A").last();
+        Ok(match assignment {
+            Some(v) => v.users,
+            None => vec![]
+        })
+    }
+
 }
