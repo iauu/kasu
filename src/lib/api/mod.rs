@@ -36,6 +36,21 @@ macro_rules! parse_resp {
     };
 }
 
+macro_rules! as_text {
+    ($req:expr) => {
+        $req.send().await?.text().await?
+    };
+}
+
+macro_rules! parse_req {
+    ($req:expr, $t:ty) => {
+        {
+            let text = as_text!($req);
+            parse_resp!(text, $t)
+        }
+    };
+}
+
 impl APIClient {
     pub fn new(xoxc: String, xoxd: String, host: String) -> Self {
         let mut headers = HeaderMap::new();
@@ -49,8 +64,7 @@ impl APIClient {
     }
 
     pub async fn chat_post_message(&self, channel: SlackChannelId, thread_ts: Option<SlackTs>, blocks: MessageData) -> Result<SlackTs, Error> {
-        let mut form = reqwest::multipart::Form::new()
-            .text("token", self.xoxc.clone())
+        let mut form = self.get_base_form()
             .text("channel", channel.0)
             .text("type", "message")
             .text("client_msg_id", uuid::Uuid::new_v4().to_string());
@@ -70,21 +84,17 @@ impl APIClient {
         };
         let req = self.reqwest_client.post(&format!("https://{}/api/chat.postMessage", self.host)).multipart(form);
 
-        let resp = req.send().await?;
-        let resp_text = resp.text().await?;
-        let model = parse_resp!(resp_text, PostMessageResponse);
+        let model = parse_req!(req, PostMessageResponse);
 
         Ok(model.ts)
     }
 
     pub async fn get_channel_manager(&self, channel: SlackChannelId) -> Result<Vec<SlackUserId>, Error> {
-        let form = reqwest::multipart::Form::new()
-            .text("token", self.xoxc.clone())
+        let form = self.get_base_form()
             .text("entity_id", channel.0);
         let req = self.reqwest_client.post(&format!("https://{}/api/admin.roles.entity.listAssignments", self.host)).multipart(form);
-        let resp = req.send().await?;
-        let resp_text = resp.text().await?;
-        let model = parse_resp!(resp_text, ListAssignmentsResponse);
+
+        let model = parse_req!(req, ListAssignmentsResponse);
 
         let assignment = model.role_assignments.into_iter().filter(|assignment| assignment.role_id == "Rl0A").last();
         Ok(match assignment {
@@ -94,14 +104,16 @@ impl APIClient {
     }
 
     pub async fn update_channel_permission(&self, channel: SlackChannelId, channel_restriction: ChannelRestriction) -> Result<(), Error> {
-        let form = reqwest::multipart::Form::new()
-            .text("token", self.xoxc.clone())
+        let form = self.get_base_form()
             .text("channel_id", channel.0)
             .text("prefs", serde_json::to_string::<Preference>(&channel_restriction.into())?);
         let req = self.reqwest_client.post(&format!("https://{}/api/channels.prefs.set", self.host)).multipart(form);
-        let resp = req.send().await?;
-        let resp_text = resp.text().await?;
-        parse_resp!(resp_text, OkResp).as_result()
+
+        parse_req!(req, OkResp).as_result()
     }
 
+    fn get_base_form(&self) -> reqwest::multipart::Form {
+        reqwest::multipart::Form::new()
+            .text("token", self.xoxc.clone())
+    }
 }
