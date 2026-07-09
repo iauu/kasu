@@ -68,6 +68,8 @@ impl Client {
             crate::lib::ws::conn::ws_task(client).await
         });
         spawn_handler(&self.read().await.event_dispatcher, crate::lib::ws::conn::set_reconnect);
-        loop {}
+        loop {
+            tokio::task::yield_now().await;
+        }
     }
 }
