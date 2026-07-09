@@ -1,14 +1,6 @@
-mod to_channel;
-mod to_slack_ts;
-mod to_slack_thread_ts;
 pub mod sendable;
-mod to_user_id;
 
 use slack_morphism::{SlackChannelId, SlackTs, SlackUserId};
-pub use to_channel::ToChannelId;
-pub use to_slack_ts::ToMessageTs;
-pub use to_slack_thread_ts::ToThreadTs;
-pub use to_user_id::ToUserId;
 pub use sendable::{Sendable, ThreadSendable};
 
 #[derive(Clone, Debug, Default)]
@@ -66,3 +58,26 @@ macro_rules! impl_multi_propagate {
         }
     };
 }
+
+/// Implement To conversion trait
+#[macro_export]
+macro_rules! to_impl {
+    ($trait_name:ident, $fn_name:ident, $field:ident, $ty:ty) => {
+        pub trait $trait_name {
+            fn $fn_name(&self) -> Option<$ty> {
+                None
+            }
+        }
+        
+        impl<T: $crate::lib::ctx_trait::ToMulti> $trait_name for T {
+            fn $fn_name(&self) -> Option<$ty> {
+                self.get_multi().$field
+            }
+        }
+    };
+}
+
+to_impl!(ToChannelId, get_channel_id, channel_id, SlackChannelId);
+to_impl!(ToThreadTs, get_thread_ts, thread_ts, SlackTs);
+to_impl!(ToMessageTs, get_ts, message_ts, SlackTs);
+to_impl!(ToUserId, get_user_id, user_id, SlackUserId);
