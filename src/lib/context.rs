@@ -32,3 +32,12 @@ pub async fn translate_to_ctx(event: Event, client: Client) -> (Event, Context) 
     let ctx = Context { client: client.clone(), channel_id: event.get_channel_id(), thread_ts: event.get_thread_ts(), message_ts: event.get_ts() };
     (event, ctx)
 }
+
+impl<T: FromContext> FromContext for Option<T> {
+    fn from_ctx(ctx: &Context) -> Option<Self>
+    where
+        Self: Sized
+    {
+        Some(T::from_ctx(ctx))
+    }
+}
