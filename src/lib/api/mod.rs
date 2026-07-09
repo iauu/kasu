@@ -10,7 +10,7 @@ use slack_morphism::blocks::SlackBlock;
 use slack_morphism::{SlackChannelId, SlackTs, SlackUserId};
 use url::Host;
 use crate::lib::api::error::Error;
-use crate::lib::api::model::{ListAssignmentsResponse, PostMessageResponse};
+use crate::lib::api::model::{ListAssignmentsResponse, OkResp, PostMessageResponse, Preference};
 
 #[derive(Clone, Debug)]
 pub struct APIClient {
@@ -91,6 +91,17 @@ impl APIClient {
             Some(v) => v.users,
             None => vec![]
         })
+    }
+
+    pub async fn update_channel_permission(&self, channel: SlackChannelId, channel_restriction: ChannelRestriction) -> Result<(), Error> {
+        let form = reqwest::multipart::Form::new()
+            .text("token", self.xoxc.clone())
+            .text("channel_id", channel.0)
+            .text("prefs", serde_json::to_string::<Preference>(&channel_restriction.into())?);
+        let req = self.reqwest_client.post(&format!("https://{}/api/channels.prefs.set", self.host)).multipart(form);
+        let resp = req.send().await?;
+        let resp_text = resp.text().await?;
+        parse_resp!(resp_text, OkResp).as_result()
     }
 
 }

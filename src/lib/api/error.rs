@@ -6,4 +6,6 @@ pub enum Error {
     SerdeJsonSerializationError(#[from] serde_json::Error),
     #[error("Request error")]
     RequestError(#[from] reqwest::Error),
+    #[error("Response ok attribute is false")]
+    RespNotOk
 }
