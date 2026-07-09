@@ -4,7 +4,7 @@ use slack_morphism::{SlackChannelId, SlackTs, SlackUserId};
 pub use sendable::{Sendable, ThreadSendable};
 
 #[derive(Clone, Debug, Default)]
-pub struct Multi {
+pub struct Metadata {
     pub channel_id: Option<SlackChannelId>,
     pub message_ts: Option<SlackTs>,
     pub thread_ts: Option<SlackTs>,
@@ -12,24 +12,24 @@ pub struct Multi {
 }
 
 
-pub trait ToMulti : Sized {
-    fn get_multi(&self) -> Multi {
-        Multi::default()
+pub trait ToMetadata: Sized {
+    fn get_metadata(&self) -> Metadata {
+        Metadata::default()
     }
 }
 
-impl ToMulti for Multi {
-    fn get_multi(&self) -> Multi {
+impl ToMetadata for Metadata {
+    fn get_metadata(&self) -> Metadata {
         self.clone()
     }
 }
 
 
-macro_rules! auto_impl_multi {
+macro_rules! auto_impl_metadata {
     ($t:ty, $field:ident) => {
-        impl $crate::lib::ctx_trait::ToMulti for $t {
-            fn get_multi(&self) -> $crate::lib::ctx_trait::Multi {
-                Multi {
+        impl $crate::lib::ctx_trait::ToMetadata for $t {
+            fn get_metadata(&self) -> $crate::lib::ctx_trait::Metadata {
+                Metadata {
                     $field: Some(self.clone()),
                     ..Default::default()
                 }
@@ -38,20 +38,20 @@ macro_rules! auto_impl_multi {
     };
 }
 
-auto_impl_multi!(SlackTs, message_ts);
-auto_impl_multi!(SlackChannelId, channel_id);
-auto_impl_multi!(SlackUserId, user_id);
+auto_impl_metadata!(SlackTs, message_ts);
+auto_impl_metadata!(SlackChannelId, channel_id);
+auto_impl_metadata!(SlackUserId, user_id);
 
 
 /// Auto implement `ToMulti` for enum if every variant contain a single value in tuple which implement `ToMulti`
 #[macro_export]
-macro_rules! impl_multi_propagate {
+macro_rules! impl_metadata_propagate {
     ($ev:ty, $($variant:ident)+) => {
-        impl $crate::lib::ctx_trait::ToMulti for $ev {
-            fn get_multi(&self) -> $crate::lib::ctx_trait::Multi {
+        impl $crate::lib::ctx_trait::ToMetadata for $ev {
+            fn get_metadata(&self) -> $crate::lib::ctx_trait::Metadata {
                 match self {
                     $(
-                        Self::$variant(event) => event.get_multi(),
+                        Self::$variant(event) => event.get_metadata(),
                     )+
                 }
             }
@@ -68,10 +68,10 @@ macro_rules! to_impl {
                 None
             }
         }
-        
-        impl<T: $crate::lib::ctx_trait::ToMulti> $trait_name for T {
+
+        impl<T: $crate::lib::ctx_trait::ToMetadata> $trait_name for T {
             fn $fn_name(&self) -> Option<$ty> {
-                self.get_multi().$field
+                self.get_metadata().$field
             }
         }
     };

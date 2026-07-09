@@ -1,10 +1,10 @@
 use std::collections::HashMap;
 use serde::{Deserialize, Serialize};
 use slack_morphism::{SlackAppId, SlackBotId, SlackChannelId, SlackClientMessageId, SlackTeamId, SlackTs, SlackUserId};
-use crate::impl_multi_propagate;
+use crate::impl_metadata_propagate;
 use crate::lib::event::{Event, FromEvent};
 use crate::lib::blocks::SlackBlock;
-use crate::lib::ctx_trait::{Multi, ToChannelId, ToMulti};
+use crate::lib::ctx_trait::{Metadata, ToChannelId, ToMetadata};
 
 #[derive(Clone, Debug, Deserialize)]
 #[serde(tag = "type")]
@@ -161,9 +161,9 @@ ws_from_event_impl!(WebsocketUserTypingEvent, Typing);
 ws_from_event_impl!(WebsocketReconnectUrlEvent, ReconnectUrl);
 ws_message_from_event_impl!(WebsocketMessageReceivedEvent, Incoming);
 
-impl ToMulti for WebsocketMessageReceivedEvent {
-    fn get_multi(&self) -> Multi {
-        Multi {
+impl ToMetadata for WebsocketMessageReceivedEvent {
+    fn get_metadata(&self) -> Metadata {
+        Metadata {
             channel_id: Some(self.channel_id.clone()),
             thread_ts: self.thread_ts.clone(),
             message_ts: Some(self.ts.clone()),
@@ -173,9 +173,9 @@ impl ToMulti for WebsocketMessageReceivedEvent {
     }
 }
 
-impl ToMulti for WebsocketUserTypingEvent {
-    fn get_multi(&self) -> Multi {
-        Multi {
+impl ToMetadata for WebsocketUserTypingEvent {
+    fn get_metadata(&self) -> Metadata {
+        Metadata {
             channel_id: Some(self.channel_id.clone()),
             thread_ts: self.thread_ts.clone(),
             user_id: Some(self.user_id.clone()),
@@ -184,10 +184,10 @@ impl ToMulti for WebsocketUserTypingEvent {
     }
 }
 
-impl ToMulti for WebsocketReconnectUrlEvent {}
+impl ToMetadata for WebsocketReconnectUrlEvent {}
 
-impl_multi_propagate!(WebsocketMessageEvent, Incoming);
-impl_multi_propagate!(WebsocketEvent, Typing Message ReconnectUrl);
+impl_metadata_propagate!(WebsocketMessageEvent, Incoming);
+impl_metadata_propagate!(WebsocketEvent, Typing Message ReconnectUrl);
 
 impl Into<Event> for WebsocketEvent {
     fn into(self) -> Event {

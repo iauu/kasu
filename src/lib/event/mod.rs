@@ -1,5 +1,5 @@
-use crate::impl_multi_propagate;
-use crate::lib::ctx_trait::{Multi, ToMulti};
+use crate::impl_metadata_propagate;
+use crate::lib::ctx_trait::{Metadata, ToMetadata};
 use crate::lib::ws::event::WebsocketEvent;
 
 #[derive(Clone, Debug)]
@@ -17,4 +17,4 @@ impl FromEvent for Event {
     }
 }
 
-impl_multi_propagate!(Event, Websocket);
+impl_metadata_propagate!(Event, Websocket);
