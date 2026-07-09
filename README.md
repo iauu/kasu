@@ -72,6 +72,7 @@ API List:
 - [ ] Channel Send Restriction
 - [ ] Channel Restriction
 - [ ] group Restriction
+- [x] Channel manager read
 
 Websocket:
 - [ ] User channel join
