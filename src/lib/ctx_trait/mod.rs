@@ -20,11 +20,35 @@ pub struct Multi {
 }
 
 
-pub trait ToMulti {
+pub trait ToMulti : Sized {
     fn get_multi(&self) -> Multi {
         Multi::default()
     }
 }
+
+impl ToMulti for Multi {
+    fn get_multi(&self) -> Multi {
+        self.clone()
+    }
+}
+
+
+macro_rules! auto_impl_multi {
+    ($t:ty, $field:ident) => {
+        impl $crate::lib::ctx_trait::ToMulti for $t {
+            fn get_multi(&self) -> $crate::lib::ctx_trait::Multi {
+                Multi {
+                    $field: Some(self.clone()),
+                    ..Default::default()
+                }
+            }
+        }
+    };
+}
+
+auto_impl_multi!(SlackTs, message_ts);
+auto_impl_multi!(SlackChannelId, channel_id);
+auto_impl_multi!(SlackUserId, user_id);
 
 
 /// Auto implement `ToMulti` for enum if every variant contain a single value in tuple which implement `ToMulti`

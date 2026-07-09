@@ -1,6 +1,6 @@
 use slack_morphism::{SlackChannelId, SlackTs, SlackUserId};
 use crate::lib::client::Client;
-use crate::lib::ctx_trait::{ToChannelId, ToThreadTs, ToMessageTs, ToUserId};
+use crate::lib::ctx_trait::{ToChannelId, ToThreadTs, ToMessageTs, ToUserId, Multi, ToMulti};
 use crate::lib::event::Event;
 
 #[derive(Clone, Debug)]
@@ -30,14 +30,18 @@ impl FromContext for Client {
 }
 
 pub async fn translate_to_ctx(event: Event, client: Client) -> (Event, Context) {
-    let ctx = Context {
-        client: client.clone(),
-        channel_id: event.get_channel_id(),
-        thread_ts: event.get_thread_ts(),
-        message_ts: event.get_ts(),
-        user_id: event.get_user_id()
-    };
+    let ctx = multi_to_ctx(&event, client).await;
     (event, ctx)
+}
+
+pub async fn multi_to_ctx(multi: &impl ToMulti, client: Client) -> Context {
+    Context {
+        client: client.clone(),
+        channel_id: multi.get_channel_id(),
+        thread_ts: multi.get_thread_ts(),
+        message_ts: multi.get_ts(),
+        user_id: multi.get_user_id()
+    }
 }
 
 impl<T: FromContext> FromContext for Option<T> {
@@ -46,5 +50,11 @@ impl<T: FromContext> FromContext for Option<T> {
         Self: Sized
     {
         Some(T::from_ctx(ctx))
+    }
+}
+
+impl Context {
+    pub async fn from(client: Client, item: &impl ToMulti) -> Self {
+        multi_to_ctx(item, client).await
     }
 }
