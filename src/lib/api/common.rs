@@ -26,6 +26,7 @@ impl From<(String, Vec<SlackBlock>)> for MessageData {
     }
 }
 
+#[derive(Clone, Debug)]
 pub enum SendRestriction {
     NoRestriction,
     CertainUser{user: Vec<SlackUserId>, allow_thread: bool}
@@ -57,6 +58,7 @@ impl Default for SendRestriction {
     }
 }
 
+#[derive(Clone, Debug)]
 pub struct ChannelRestriction {
     pub restriction: SendRestriction,
     pub allow_channel_ping: bool,
@@ -76,7 +78,7 @@ impl Default for ChannelRestriction {
 impl Into<Preference> for ChannelRestriction {
     fn into(self) -> Preference {
         Preference {
-            who_can_send: self.restriction.pref_str().0,
+            who_can_post: self.restriction.pref_str().0,
             can_thread: self.restriction.pref_str().1,
             enable_at_here: self.allow_here_ping.into(),
             enable_at_channel: self.allow_channel_ping.into()

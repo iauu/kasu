@@ -1,8 +1,9 @@
 use slack_morphism::SlackTextFormat;
 use tracing::instrument;
-use crate::lib::api::MessageData;
+use crate::lib::api::{ChannelRestriction, MessageData, SendRestriction};
+use crate::lib::api::model::Preference;
 use crate::lib::ws::event::WebsocketMessageReceivedEvent;
-use crate::lib::ctx_item::Messageable;
+use crate::lib::ctx_item::{Messageable, PartialChannel, PartialUser};
 use crate::lib::ctx_trait::{Sendable, ThreadSendable};
 
 macro_rules! contains {
@@ -15,7 +16,7 @@ macro_rules! contains {
 }
 
 #[instrument(level = "info", fields(module = module_path!()), target = "msg_respond")]
-pub(crate) async fn msg_respond(event: WebsocketMessageReceivedEvent, messagable: Messageable) -> () {
+pub(crate) async fn msg_respond(event: WebsocketMessageReceivedEvent, messagable: Messageable, user: Option<PartialUser>) -> () {
     let text = event.text.unwrap_or("N/A".to_string());
     tracing::info!("Received text: {text}");
     let lower = text.to_lowercase();
@@ -41,6 +42,41 @@ pub(crate) async fn msg_respond(event: WebsocketMessageReceivedEvent, messagable
             }
         };
         match msg {
+            Ok(ts) => {
+                tracing::info!("Send successful: {}", ts);
+            }
+            Err(e) => {
+                tracing::error!("Failed to send message: {}", e);
+            }
+        }
+    }
+    if contains!(lower, "kasu" "channel permission") && let Some(user) = user && user.user_id.0 == "U092BGL0UUQ" {
+        let channel = messagable.channel_id.clone();
+        let rest = ChannelRestriction {
+            restriction: SendRestriction::CertainUser {
+                user: vec!["U092BGL0UUQ".into(), "U0BGXBNBKNU".into()],
+                allow_thread: false,
+            },
+            ..Default::default()
+        };
+        let result = messagable.client.read().await.api_client.update_channel_permission(channel.clone(), rest.clone()).await;
+        if let Err(e) = &result {
+            tracing::error!("Failed to update channel permission: {}, payload: {}", e, serde_json::to_string::<Preference>(&rest.into()).unwrap());
+        }
+        match messagable.reply_in_thread(MessageData::Raw(if result.is_ok() {"Success"} else {"Failed"}.to_string())).await {
+            Ok(ts) => {
+                tracing::info!("Send successful: {}", ts);
+            }
+            Err(e) => {
+                tracing::error!("Failed to send message: {}", e);
+            }
+        }
+        tokio::time::sleep(tokio::time::Duration::from_secs(60)).await;
+        let result = messagable.client.read().await.api_client.update_channel_permission(channel, ChannelRestriction::default()).await;
+        if let Err(e) = &result {
+            tracing::error!("Failed to update channel permission: {}", e);
+        }
+        match  messagable.reply_in_thread(MessageData::Raw(if result.is_ok() {"Success"} else {"Failed"}.to_string())).await {
             Ok(ts) => {
                 tracing::info!("Send successful: {}", ts);
             }

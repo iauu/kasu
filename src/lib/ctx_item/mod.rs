@@ -4,3 +4,4 @@ mod partial_user;
 
 pub use partial_channel::PartialChannel;
 pub use messagable::Messageable;
+pub use partial_user::PartialUser;

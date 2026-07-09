@@ -49,7 +49,7 @@ impl Into<bool> for StrBoolean {
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Preference {
-    pub who_can_send: String,
+    pub who_can_post: String,
     pub can_thread: String,
     pub enable_at_here: StrBoolean,
     pub enable_at_channel: StrBoolean

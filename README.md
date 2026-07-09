@@ -69,7 +69,7 @@ This would allow the handler to listen to income event and enact on it.
 API List:
 - [ ] Slash command invoke
 - [ ] Blockkit interaction
-- [ ] Channel Send Restriction
+- [x] Channel Send Restriction
 - [ ] Channel Restriction
 - [ ] group Restriction
 - [x] Channel manager read

@@ -1,5 +1,5 @@
 pub mod error;
-mod model;
+pub mod model;
 pub mod common;
 
 pub use crate::lib::api::common::*;
