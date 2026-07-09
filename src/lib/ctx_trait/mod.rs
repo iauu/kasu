@@ -2,11 +2,13 @@ mod to_channel;
 mod to_slack_ts;
 mod to_slack_thread_ts;
 pub mod sendable;
+mod to_user_id;
 
 use slack_morphism::{SlackChannelId, SlackTs, SlackUserId};
 pub use to_channel::ToChannelId;
 pub use to_slack_ts::ToMessageTs;
 pub use to_slack_thread_ts::ToThreadTs;
+pub use to_user_id::ToUserId;
 pub use sendable::{Sendable, ThreadSendable};
 
 #[derive(Clone, Debug, Default)]
