@@ -23,3 +23,20 @@ pub trait ToMulti {
         Multi::default()
     }
 }
+
+
+/// Auto implement `ToMulti` for enum if every variant contain a single value in tuple which implement `ToMulti`
+#[macro_export]
+macro_rules! impl_multi_propagate {
+    ($ev:ty, $($variant:ident)+) => {
+        impl $crate::lib::ctx_trait::ToMulti for $ev {
+            fn get_multi(&self) -> $crate::lib::ctx_trait::Multi {
+                match self {
+                    $(
+                        Self::$variant(event) => event.get_multi(),
+                    )+
+                }
+            }
+        }
+    };
+}

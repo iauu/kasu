@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 use serde::{Deserialize, Serialize};
 use slack_morphism::{SlackAppId, SlackBotId, SlackChannelId, SlackClientMessageId, SlackTeamId, SlackTs, SlackUserId};
+use crate::impl_multi_propagate;
 use crate::lib::event::{Event, FromEvent};
 use crate::lib::blocks::SlackBlock;
 use crate::lib::ctx_trait::{Multi, ToChannelId, ToMulti};
@@ -166,7 +167,8 @@ impl ToMulti for WebsocketMessageReceivedEvent {
             channel_id: Some(self.channel_id.clone()),
             thread_ts: self.thread_ts.clone(),
             message_ts: Some(self.ts.clone()),
-            user_id: Some(self.user_id.clone())
+            user_id: Some(self.user_id.clone()),
+            ..Default::default()
         }
     }
 }
@@ -176,30 +178,16 @@ impl ToMulti for WebsocketUserTypingEvent {
         Multi {
             channel_id: Some(self.channel_id.clone()),
             thread_ts: self.thread_ts.clone(),
-            message_ts: None,
-            user_id: Some(self.user_id.clone())
+            user_id: Some(self.user_id.clone()),
+            ..Default::default()
         }
     }
 }
 
 impl ToMulti for WebsocketReconnectUrlEvent {}
-impl ToMulti for WebsocketMessageEvent {
-    fn get_multi(&self) -> Multi {
-        match self {
-            WebsocketMessageEvent::Incoming(event) => event.get_multi(),
-        }
-    }
-}
 
-impl ToMulti for WebsocketEvent {
-    fn get_multi(&self) -> Multi {
-        match self {
-            WebsocketEvent::Message(event) => event.get_multi(),
-            WebsocketEvent::Typing(event) => event.get_multi(),
-            WebsocketEvent::ReconnectUrl(event) => event.get_multi(),
-        }
-    }
-}
+impl_multi_propagate!(WebsocketMessageEvent, Incoming);
+impl_multi_propagate!(WebsocketEvent, Typing Message ReconnectUrl);
 
 impl Into<Event> for WebsocketEvent {
     fn into(self) -> Event {

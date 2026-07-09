@@ -1,3 +1,4 @@
+use crate::impl_multi_propagate;
 use crate::lib::ctx_trait::{Multi, ToMulti};
 use crate::lib::ws::event::WebsocketEvent;
 
@@ -16,10 +17,4 @@ impl FromEvent for Event {
     }
 }
 
-impl ToMulti for Event {
-    fn get_multi(&self) -> Multi {
-        match self {
-            Event::Websocket(event) => event.get_multi(),
-        }
-    }
-}
+impl_multi_propagate!(Event, Websocket);
