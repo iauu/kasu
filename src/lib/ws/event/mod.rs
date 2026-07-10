@@ -14,7 +14,9 @@ pub enum WebsocketEvent {
     #[serde(rename="reconnect_url")]
     ReconnectUrl(WebsocketReconnectUrlEvent),
     #[serde(rename="message")]
-    Message(WebsocketMessageEvent)
+    Message(WebsocketMessageEvent),
+    #[serde(rename = "emoji_changed")]
+    Emoji(WebsocketEmojiChangedEvent)
 }
 
 impl FromEvent for WebsocketEvent {
@@ -108,8 +110,31 @@ pub struct WebsocketMessageReceivedEvent {
     pub suppress_notification: bool,
     event_ts: String,
     ts: SlackTs,
-    thread_ts: Option<SlackTs>
+    thread_ts: Option<SlackTs>,
+    #[serde(default)]
+    is_ephemeral: bool
 }
+
+#[derive(Clone, Debug, Deserialize)]
+#[serde(tag = "subtype", rename_all = "snake_case")]
+pub enum WebsocketEmojiChangedEvent {
+    Add {
+        name: String,
+        value: String,
+        event_ts: SlackTs
+    },
+    Remove {
+        names: Vec<String>,
+        event_ts: SlackTs
+    },
+    Rename {
+        old_name: String,
+        new_name: String,
+        value: String,
+        event_ts: SlackTs
+    }
+}
+
 
 // #[derive(Clone, Debug, Deserialize)]
 // pub struct WebsocketMessageSubtypedEvent {
@@ -159,6 +184,7 @@ pub enum BotMessageTag {
 ws_from_event_impl!(WebsocketMessageEvent, Message);
 ws_from_event_impl!(WebsocketUserTypingEvent, Typing);
 ws_from_event_impl!(WebsocketReconnectUrlEvent, ReconnectUrl);
+ws_from_event_impl!(WebsocketEmojiChangedEvent, Emoji);
 ws_message_from_event_impl!(WebsocketMessageReceivedEvent, Incoming);
 
 impl ToMetadata for WebsocketMessageReceivedEvent {
@@ -185,9 +211,10 @@ impl ToMetadata for WebsocketUserTypingEvent {
 }
 
 impl ToMetadata for WebsocketReconnectUrlEvent {}
+impl ToMetadata for WebsocketEmojiChangedEvent {}
 
 impl_metadata_propagate!(WebsocketMessageEvent, Incoming);
-impl_metadata_propagate!(WebsocketEvent, Typing Message ReconnectUrl);
+impl_metadata_propagate!(WebsocketEvent, Typing Message ReconnectUrl Emoji);
 
 impl Into<Event> for WebsocketEvent {
     fn into(self) -> Event {
