@@ -7,17 +7,18 @@ pub use crate::lib::api::common::*;
 use reqwest::Client;
 use reqwest::header::HeaderMap;
 use slack_morphism::blocks::SlackBlock;
-use slack_morphism::{SlackChannelId, SlackTs, SlackUserId};
+use slack_morphism::{SlackChannelId, SlackChannelInfo, SlackTeamId, SlackTs, SlackUserId};
 use url::Host;
 use crate::lib::api::error::Error;
-use crate::lib::api::model::{ListAssignmentsResponse, OkResp, PostMessageResponse, Preference};
+use crate::lib::api::model::{ConversationsCreateResponse, ListAssignmentsResponse, OkResp, PostMessageResponse, Preference};
 
 #[derive(Clone, Debug)]
 pub struct APIClient {
     host: String,
     xoxc: String,
     xoxd: String,
-    reqwest_client: Client
+    reqwest_client: Client,
+    team_id: SlackTeamId
 }
 
 macro_rules! parse_resp {
@@ -52,14 +53,14 @@ macro_rules! parse_req {
 }
 
 impl APIClient {
-    pub fn new(xoxc: String, xoxd: String, host: String) -> Self {
+    pub fn new(xoxc: String, xoxd: String, host: String, team_id: SlackTeamId) -> Self {
         let mut headers = HeaderMap::new();
 
         headers.insert("Cookie", format!("tz=0; d={}", xoxd).parse().unwrap());
         Self {
             xoxc, xoxd,
             reqwest_client: Client::builder().default_headers(headers).build().unwrap(),
-            host
+            host, team_id
         }
     }
 
@@ -115,5 +116,14 @@ impl APIClient {
     fn get_base_form(&self) -> reqwest::multipart::Form {
         reqwest::multipart::Form::new()
             .text("token", self.xoxc.clone())
+    }
+
+    pub async fn conversation_create(&self, name: String) -> Result<SlackChannelInfo, Error> {
+        let form = self.get_base_form()
+            .text("name", name)
+            .text("team_id", self.team_id.0.clone());
+        let req = self.reqwest_client.post(&format!("https://{}/api/conversations.create", self.host)).multipart(form);
+        
+        Ok(parse_req!(req, ConversationsCreateResponse).channel)
     }
 }

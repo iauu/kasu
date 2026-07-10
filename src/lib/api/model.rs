@@ -1,5 +1,5 @@
 use serde::{Deserialize, Serialize};
-use slack_morphism::{SlackChannelId, SlackTs, SlackUserId};
+use slack_morphism::{SlackChannelId, SlackChannelInfo, SlackTs, SlackUserId};
 use slack_morphism::blocks::SlackBlock;
 use crate::lib::api::error::Error;
 
@@ -67,4 +67,9 @@ impl OkResp {
             false => Err(Error::RespNotOk)
         }
     }
+}
+
+#[derive(Deserialize, Debug, Clone)]
+pub struct ConversationsCreateResponse {
+    pub channel: SlackChannelInfo
 }
