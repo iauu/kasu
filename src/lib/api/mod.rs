@@ -118,12 +118,13 @@ impl APIClient {
             .text("token", self.xoxc.clone())
     }
 
-    pub async fn conversation_create(&self, name: String) -> Result<SlackChannelInfo, Error> {
+    pub async fn conversation_create(&self, name: String, is_private: bool) -> Result<SlackChannelInfo, Error> {
         let form = self.get_base_form()
             .text("name", name)
-            .text("team_id", self.team_id.0.clone());
+            .text("team_id", self.team_id.0.clone())
+            .text("is_private", is_private.to_string());
         let req = self.reqwest_client.post(&format!("https://{}/api/conversations.create", self.host)).multipart(form);
-        
+
         Ok(parse_req!(req, ConversationsCreateResponse).channel)
     }
 }
