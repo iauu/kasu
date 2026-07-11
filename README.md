@@ -5,7 +5,9 @@ Create `.env` with the following content
 ```env
 XOXC=
 XOXD=
-HOST=hackclub.enterprise.slack.com 
+HOST=hackclub.enterprise.slack.com
+TEAM_ID=
+USER_ID=
 ```
 (The host is the domain for sending API request to your the slack server. This might be different depends on your workspace, or in the case of enterprise, the enterprise the workspace is in)
 

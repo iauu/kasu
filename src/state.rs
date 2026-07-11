@@ -1,15 +1,16 @@
 use std::sync::Arc;
 use async_lock::RwLock;
 use crate::lib::context;
+use crate::lib::context::{AsyncSafe, StateUnwrappedMarker};
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, Ord, PartialOrd, PartialEq, Eq)]
 pub enum Profile {
     Shy,
     Katie
 }
 
 impl Profile {
-    fn as_path(&self) -> &'static str {
+    pub(crate) fn as_path(&self) -> &'static str {
         match self {
             Profile::Shy => "assets/kasu_shy.png",
             Profile::Katie => "assets/kasu_katie.png"
@@ -18,16 +19,17 @@ impl Profile {
 }
 
 #[derive(Debug)]
-pub struct StateInternal {
+pub struct BotStateInternal {
     pub last_message: std::time::Instant,
     pub current_pfp: Profile
 }
 
-pub type State = Arc<RwLock<StateInternal>>;
 
-impl context::StateUnwrapped for StateInternal {}
+pub type BotState = Arc<RwLock<BotStateInternal>>;
 
-impl Default for StateInternal {
+impl context::StateUnwrappedMarker for BotStateInternal {}
+
+impl Default for BotStateInternal {
     fn default() -> Self {
         Self {
             last_message: std::time::Instant::now(),

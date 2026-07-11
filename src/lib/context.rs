@@ -12,22 +12,28 @@ impl<T> AsyncSafe for T where T: Send + Sync + Clone + Debug + 'static {}
 
 
 /// Marker trait for the state struct
-pub trait State : AsyncSafe {}
+pub trait StateMarker: AsyncSafe {}
 
 /// Marker trait for the state struct before applying Arc with access lock
-pub trait StateUnwrapped : Send + Sync + Debug + 'static {}
+pub trait StateUnwrappedMarker: Send + Sync + Debug + 'static {}
 
-impl<T: State> StateUnwrapped for T {}
+impl<T: StateMarker> StateUnwrappedMarker for T {}
 
 macro_rules! extend_state {
     ( $( $t:ty ),* $( , )? ) => {
         $(
-            impl<T> State for $t where T : StateUnwrapped {}
+            impl<T> StateMarker for $t where T : StateUnwrappedMarker {}
         )+
     };
 }
 
 extend_state!(Arc<Mutex<T>>, Arc<RwLock<T>>, Arc<std::sync::Mutex<T>>, Arc<std::sync::RwLock<T>>, Arc<tokio::sync::Mutex<T>>, Arc<tokio::sync::RwLock<T>>);
+
+#[derive(Clone, Debug)]
+pub enum State<T>
+where T : AsyncSafe {
+    State(T)
+}
 
 
 #[derive(Clone, Debug)]
@@ -106,8 +112,19 @@ where T: AsyncSafe {
 }
 
 impl<T> FromContext<T> for T
-where T : State {
+where T : StateMarker
+{
     fn from_ctx(ctx: &Context<T>) -> Option<Self> {
         Some(ctx.client.read_blocking().state.clone())
+    }
+}
+
+impl<T> FromContext<T> for State<T>
+where T : AsyncSafe {
+    fn from_ctx(ctx: &Context<T>) -> Option<Self>
+    where
+        Self: Sized,
+    {
+        Some(State::State(ctx.client.read_blocking().state.clone()))
     }
 }

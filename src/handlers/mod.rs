@@ -1,6 +1,6 @@
 pub(crate) mod test_msg_listen;
 pub(crate) mod msg_respond;
-
+pub(crate) mod bot_msg_send;
 
 /// Log the event and ignore failure. Error store in `e` and result store in `res`
 #[macro_export]

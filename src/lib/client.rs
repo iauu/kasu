@@ -1,7 +1,7 @@
 use std::ops::Deref;
 use std::sync::Arc;
 use async_lock::RwLock;
-use slack_morphism::SlackTeamId;
+use slack_morphism::{SlackTeamId, SlackUserId};
 use url::Host;
 use crate::lib::api::APIClient;
 use crate::lib::context::AsyncSafe;
@@ -16,6 +16,7 @@ pub struct ClientState {
     pub api_client: APIClient,
     pub host: String,
     pub team_id: SlackTeamId,
+    pub user_id: SlackUserId
 }
 
 #[derive(Debug)]
@@ -62,7 +63,7 @@ where T: AsyncSafe {
         self.read_blocking().xoxd_token.clone()
     }
 
-    pub fn new(xoxc: String, xoxd: String, host: String, team_id: SlackTeamId, state: T) -> Self {
+    pub fn new(xoxc: String, xoxd: String, host: String, team_id: SlackTeamId, state: T, user_id: SlackUserId) -> Self {
         Self {
             internal: Arc::new(RwLock::new(ClientState {
                 xoxc_token: xoxc.clone(),
@@ -71,6 +72,7 @@ where T: AsyncSafe {
                 api_client: APIClient::new(xoxc, xoxd, host.clone(), team_id.clone()),
                 host,
                 team_id,
+                user_id
             })),
             event_dispatcher: EventDispatcher::new(4096),
             state
@@ -92,8 +94,8 @@ where T: AsyncSafe {
         self.read_blocking().get_xoxd()
     }
 
-    pub fn new_with_state(xoxc: String, xoxd: String, host: String, team_id: SlackTeamId, state: T) -> Self {
-        Self(Arc::new(RwLock::new(ClientBase::<T>::new(xoxc, xoxd, host, team_id, state))))
+    pub fn new_with_state(xoxc: String, xoxd: String, host: String, team_id: SlackTeamId, state: T, user_id: SlackUserId) -> Self {
+        Self(Arc::new(RwLock::new(ClientBase::<T>::new(xoxc, xoxd, host, team_id, state, user_id))))
     }
 
     pub async fn run(&self) -> ! {

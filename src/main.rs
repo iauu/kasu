@@ -9,6 +9,7 @@ mod lib;
 mod env;
 mod handlers;
 mod state;
+mod tasks;
 
 use std::io;
 use std::ptr::replace;
@@ -16,7 +17,8 @@ use std::sync::Arc;
 use async_lock::RwLock;
 use tracing_subscriber::{EnvFilter, prelude::*};
 use crate::lib::handler::spawn_handler;
-use crate::state::{State, StateInternal};
+use crate::state::{BotState, BotStateInternal};
+use crate::tasks::pfp_task::pfp_task;
 
 struct RedactingWriter<W> {
     inner: W,
@@ -79,12 +81,19 @@ async fn main() {
         .with_writer(lookup_writer)
         .init();
     
-    let state = Arc::new(RwLock::new(StateInternal::default()));
+    let state = Arc::new(RwLock::new(BotStateInternal::default()));
 
-    let client: Client<State> = Client::new_with_state(env.xoxc, env.xoxd, env.host, env.team_id, state);
+    let client: Client<BotState> = Client::new_with_state(env.xoxc, env.xoxd, env.host, env.team_id, state.clone(), env.user_id);
 
     spawn_handler(&client.read().await.event_dispatcher, handlers::test_msg_listen::test_msg_listen);
     spawn_handler(&client.read().await.event_dispatcher, handlers::msg_respond::msg_respond);
+    spawn_handler(&client.read().await.event_dispatcher, handlers::bot_msg_send::bot_msg_send);
+    
+    let partial_client = client.get_partial();
+    
+    tokio::task::spawn(async move {
+        pfp_task(partial_client, state).await
+    });
     
     let _ = client.get_partial().read().await.api_client.set_profile("assets/kasu_katie.png").await;
 
