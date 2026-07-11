@@ -2,6 +2,7 @@ pub mod error;
 pub mod model;
 pub mod common;
 
+use std::path::Path;
 pub use crate::lib::api::common::*;
 
 use reqwest::Client;
@@ -10,7 +11,7 @@ use slack_morphism::blocks::SlackBlock;
 use slack_morphism::{SlackChannelId, SlackChannelInfo, SlackTeamId, SlackTs, SlackUserId};
 use url::Host;
 use crate::lib::api::error::Error;
-use crate::lib::api::model::{ConversationsCreateResponse, ListAssignmentsResponse, OkResp, PostMessageResponse, Preference};
+use crate::lib::api::model::{ConversationsCreateResponse, ListAssignmentsResponse, OkResp, PostMessageResponse, Preference, PreparePhotoResponse};
 
 #[derive(Clone, Debug)]
 pub struct APIClient {
@@ -160,5 +161,32 @@ impl APIClient {
         let req = self.reqwest_client.post(&format!("https://{}/api/conversations.kick", self.host)).multipart(form);
 
         parse_req!(req, OkResp).as_result()
+    }
+
+    #[cfg(feature = "photo")]
+    async fn profile_prepare_photo<U>(&self, path: U) -> Result<PreparePhotoResponse, Error>
+    where U: AsRef<Path>{
+        let form = self.get_base_form()
+            .file("image", path).await?;
+
+        let req = self.reqwest_client.post(&format!("https://{}/api/users.preparePhoto", self.host)).multipart(form);
+
+        Ok(parse_req!(req, PreparePhotoResponse))
+    }
+
+    async fn profile_set_photo(&self, id: String) -> Result<(), Error> {
+        let form = self.get_base_form()
+            .text("id", id);
+
+        let req = self.reqwest_client.post(&format!("https://{}/api/users.setPhoto", self.host)).multipart(form);
+
+        parse_req!(req, OkResp).as_result()
+    }
+
+    #[cfg(feature = "photo")]
+    pub async fn set_profile<U>(&self, path: U) -> Result<(), Error>
+    where U : AsRef<Path> {
+        let resp = self.profile_prepare_photo(path).await?;
+        self.profile_set_photo(resp.id).await
     }
 }

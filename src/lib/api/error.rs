@@ -7,5 +7,7 @@ pub enum Error {
     #[error("Request error")]
     RequestError(#[from] reqwest::Error),
     #[error("Response ok attribute is false")]
-    RespNotOk
+    RespNotOk,
+    #[error("File access error")]
+    FileAccessError(#[from] std::io::Error)
 }

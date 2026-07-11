@@ -73,3 +73,9 @@ impl OkResp {
 pub struct ConversationsCreateResponse {
     pub channel: SlackChannelInfo
 }
+
+#[derive(Deserialize, Debug, Clone)]
+pub struct PreparePhotoResponse {
+    pub id: String,
+    pub url: String
+}
