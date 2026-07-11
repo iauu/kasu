@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 use serde::{Deserialize, Serialize};
-use slack_morphism::{SlackAppId, SlackBotId, SlackChannelId, SlackClientMessageId, SlackTeamId, SlackTs, SlackUserId};
+use slack_morphism::{SlackAppId, SlackBotId, SlackChannelId, SlackChannelType, SlackClientMessageId, SlackEnterpriseId, SlackTeamId, SlackTs, SlackUserId};
 use crate::impl_metadata_propagate;
 use crate::lib::event::{Event, FromEvent};
 use crate::lib::blocks::SlackBlock;
@@ -16,7 +16,11 @@ pub enum WebsocketEvent {
     #[serde(rename="message")]
     Message(WebsocketMessageEvent),
     #[serde(rename = "emoji_changed")]
-    Emoji(WebsocketEmojiChangedEvent)
+    Emoji(WebsocketEmojiChangedEvent),
+    #[serde(rename = "member_joined_channel")]
+    ChannelMemberJoin(WebsocketChannelMemberJoinEvent),
+    #[serde(rename = "member_left_channel")]
+    ChannelMemberLeft(WebsocketChannelMemberLeaveEvent)
 }
 
 impl FromEvent for WebsocketEvent {
@@ -40,16 +44,17 @@ pub struct  WebsocketUserTypingEvent {
     pub user_id: SlackUserId
 }
 
-macro_rules! ws_from_event_impl {
-    ($name:ty, $event:ident) => {
+macro_rules! from_event_impl {
+    ($ori:path, $name:ty, $event:ident) => {
         impl $crate::lib::event::FromEvent for $name {
             fn from_event(event: $crate::lib::event::Event) -> Option<Self>
             where
                 Self: Sized,
             {
-                let ws: WebsocketEvent = $crate::lib::ws::event::WebsocketEvent::from_event(event)?;
+                use $ori as C;
+                let ws: C = C::from_event(event)?;
                 match ws {
-                    $crate::lib::ws::event::WebsocketEvent::$event(event) => Some(event),
+                    C::$event(event) => Some(event),
                     _ => None
                 }
             }
@@ -57,20 +62,15 @@ macro_rules! ws_from_event_impl {
     };
 }
 
+macro_rules! ws_from_event_impl {
+    ($name:ty, $event:ident) => {
+        from_event_impl!($crate::lib::ws::event::WebsocketEvent, $name, $event);
+    };
+}
+
 macro_rules! ws_message_from_event_impl {
     ($name:ty, $event:ident) => {
-        impl $crate::lib::event::FromEvent for $name {
-            fn from_event(event: $crate::lib::event::Event) -> Option<Self>
-            where
-                Self: Sized,
-            {
-                let ws: WebsocketMessageEvent = $crate::lib::ws::event::WebsocketMessageEvent::from_event(event)?;
-                match ws {
-                    $crate::lib::ws::event::WebsocketMessageEvent::$event(event) => Some(event),
-                    _ => None
-                }
-            }
-        }
+        from_event_impl!($crate::lib::ws::event::WebsocketMessageEvent, $name, $event);
     };
 }
 
@@ -181,10 +181,55 @@ pub enum BotMessageTag {
     BotMessage,
 }
 
+#[derive(Clone, Debug, Deserialize)]
+pub struct WebsocketChannelMemberJoinEvent {
+    pub user: SlackUserId,
+    pub channel: SlackChannelId,
+    pub channel_type: SlackChannelType,
+    pub team: SlackTeamId,
+    pub inviter: Option<SlackUserId>,
+    #[serde(default)]
+    pub enterprise: Option<SlackEnterpriseId>,
+    pub event_ts: SlackTs,
+    pub ts: SlackTs
+}
+
+impl ToMetadata for WebsocketChannelMemberJoinEvent {
+    fn get_metadata(&self) -> Metadata {
+        Metadata {
+            channel_id: Some(self.channel.clone()),
+            user_id: Some(self.user.clone()),
+            ..Default::default()
+        }
+    }
+}
+
+#[derive(Clone, Debug, Deserialize)]
+pub struct WebsocketChannelMemberLeaveEvent {
+    pub user: SlackUserId,
+    pub channel: SlackChannelId,
+    pub channel_type: SlackChannelType,
+    pub team: SlackTeamId,
+    pub event_ts: SlackTs,
+    pub ts: SlackTs
+}
+
+impl ToMetadata for WebsocketChannelMemberLeaveEvent {
+    fn get_metadata(&self) -> Metadata {
+        Metadata {
+            channel_id: Some(self.channel.clone()),
+            user_id: Some(self.user.clone()),
+            ..Default::default()
+        }
+    }
+}
+
 ws_from_event_impl!(WebsocketMessageEvent, Message);
 ws_from_event_impl!(WebsocketUserTypingEvent, Typing);
 ws_from_event_impl!(WebsocketReconnectUrlEvent, ReconnectUrl);
 ws_from_event_impl!(WebsocketEmojiChangedEvent, Emoji);
+ws_from_event_impl!(WebsocketChannelMemberJoinEvent, ChannelMemberJoin);
+ws_from_event_impl!(WebsocketChannelMemberLeaveEvent, ChannelMemberLeft);
 ws_message_from_event_impl!(WebsocketMessageReceivedEvent, Incoming);
 
 impl ToMetadata for WebsocketMessageReceivedEvent {
@@ -214,7 +259,7 @@ impl ToMetadata for WebsocketReconnectUrlEvent {}
 impl ToMetadata for WebsocketEmojiChangedEvent {}
 
 impl_metadata_propagate!(WebsocketMessageEvent, Incoming);
-impl_metadata_propagate!(WebsocketEvent, Typing Message ReconnectUrl Emoji);
+impl_metadata_propagate!(WebsocketEvent, Typing Message ReconnectUrl Emoji ChannelMemberJoin ChannelMemberLeft);
 
 impl Into<Event> for WebsocketEvent {
     fn into(self) -> Event {
