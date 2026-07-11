@@ -4,22 +4,22 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-async-trait = "0.1.89"
-paste = "1.0.15"
-reqwest = { version = "0.13.4", features = ["json", "multipart"] }
-serde = { version = "1.0.228", features = ["derive"] }
-thiserror = "2.0.18"
-tokio = { version = "1.52.3", features = ["full"] }
-tokio-tungstenite = { version = "0.29.0", features = ["native-tls"] }
-futures-util = "0.3.32" # wss
-serde_json = "1.0.150"
-tracing = "0.1.44"
-tracing-subscriber = { version = "0.3.23", features = ["env-filter"] }
-tokio-retry = "0.3.2"
-async-lock = "3.4.2"
-serde-env = "0.3.0"
-slack-morphism = "2.22.0"
-urlencoding = "2.1.3"
-chrono = "0.4.45"
-uuid = { version = "1.23.4", features = ["v4"] }
-url = { version = "2.5.8", features = ["serde"] }
+async-trait = "0.1.89" # bin,lib
+paste = "1.0.15" # lib
+reqwest = { version = "0.13.4", features = ["json", "multipart"] } # lib:api
+serde = { version = "1.0.228", features = ["derive"] } # bin,lib
+thiserror = "2.0.18" # lib
+tokio = { version = "1.52.3", features = ["full"] } # bin,lib
+tokio-tungstenite = { version = "0.29.0", features = ["native-tls"] } # lib:ws
+futures-util = "0.3.32" # lib:ws
+serde_json = "1.0.150" # lib
+tracing = "0.1.44" # bin,lib
+tracing-subscriber = { version = "0.3.23", features = ["env-filter"] } # bin,lib
+tokio-retry = "0.3.2" # lib:ws
+async-lock = "3.4.2" # bin,lib
+serde-env = "0.3.0" # bin
+slack-morphism = "2.22.0" # lib
+urlencoding = "2.1.3" # bin
+chrono = "0.4.45" # lib:ws
+uuid = { version = "1.23.4", features = ["v4"] } # lib:api
+url = { version = "2.5.8", features = ["serde"] } # lib:api

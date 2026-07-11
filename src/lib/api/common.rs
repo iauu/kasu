@@ -1,3 +1,4 @@
+use std::fmt::{Display, Formatter};
 use slack_morphism::blocks::SlackBlock;
 use slack_morphism::SlackUserId;
 use crate::lib::api::model::Preference;
@@ -83,5 +84,19 @@ impl Into<Preference> for ChannelRestriction {
             enable_at_here: self.allow_here_ping.into(),
             enable_at_channel: self.allow_channel_ping.into()
         }
+    }
+}
+
+pub enum RoleAction {
+    Add,
+    Remove
+}
+
+impl Display for RoleAction {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", match self {
+            Self::Add => "add",
+            Self::Remove => "remove"
+        })
     }
 }

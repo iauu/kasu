@@ -127,4 +127,38 @@ impl APIClient {
 
         Ok(parse_req!(req, ConversationsCreateResponse).channel)
     }
+
+    pub async fn change_channel_manager(&self, channels: Vec<SlackChannelId>, users: Vec<SlackUserId>, action: RoleAction) -> Result<(), Error> {
+        let form = self.get_base_form()
+            .text("role_id", "Rl0A")
+            .text("role_scopes", channels.into_iter().map(|s| s.to_string()).collect::<Vec<_>>().join(","))
+            .text("user_ids", users.into_iter().map(|s| s.to_string()).collect::<Vec<_>>().join(","));
+
+        let req = self.reqwest_client.post(&format!("https://{}/api/admin.roles.{}Members", self.host, action.to_string())).multipart(form);
+
+        parse_req!(req, OkResp).as_result()
+    }
+
+    pub async fn add_user(&self, channel: SlackChannelId, users: Vec<SlackUserId>) -> Result<(), Error> {
+        let form = self.get_base_form()
+            .text("role_id", "Rl0A")
+            .text("channel", channel.to_string())
+            .text("users", users.into_iter().map(|s| s.to_string()).collect::<Vec<_>>().join(","))
+            .text("force", "true");
+
+        let req = self.reqwest_client.post(&format!("https://{}/api/conversations.invite", self.host)).multipart(form);
+
+        parse_req!(req, OkResp).as_result()
+    }
+
+    pub async fn remove_user(&self, channel: SlackChannelId, user: SlackUserId) -> Result<(), Error> {
+        let form = self.get_base_form()
+            .text("role_id", "Rl0A")
+            .text("channel", channel.to_string())
+            .text("user", user.to_string());
+
+        let req = self.reqwest_client.post(&format!("https://{}/api/conversations.kick", self.host)).multipart(form);
+
+        parse_req!(req, OkResp).as_result()
+    }
 }
