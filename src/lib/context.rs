@@ -1,4 +1,6 @@
 use std::fmt::Debug;
+use std::sync::{Arc};
+use async_lock::{Mutex, RwLock};
 use slack_morphism::{SlackChannelId, SlackTs, SlackUserId};
 use crate::lib::client::{Client, PartialClient};
 use crate::lib::ctx_trait::{ToChannelId, ToThreadTs, ToMessageTs, ToUserId, Metadata, ToMetadata};
@@ -7,6 +9,25 @@ use crate::lib::event::Event;
 pub trait AsyncSafe :  Send + Sync + Clone + Debug + 'static {}
 
 impl<T> AsyncSafe for T where T: Send + Sync + Clone + Debug + 'static {}
+
+
+/// Marker trait for the state struct
+pub trait State : AsyncSafe {}
+
+/// Marker trait for the state struct before applying Arc with access lock
+pub trait StateUnwrapped : Send + Sync + Debug + 'static {}
+
+impl<T: State> StateUnwrapped for T {}
+
+macro_rules! extend_state {
+    ( $( $t:ty ),* $( , )? ) => {
+        $(
+            impl<T> State for $t where T : StateUnwrapped {}
+        )+
+    };
+}
+
+extend_state!(Arc<Mutex<T>>, Arc<RwLock<T>>, Arc<std::sync::Mutex<T>>, Arc<std::sync::RwLock<T>>, Arc<tokio::sync::Mutex<T>>, Arc<tokio::sync::RwLock<T>>);
 
 
 #[derive(Clone, Debug)]
@@ -81,5 +102,12 @@ impl<T> Context<T>
 where T: AsyncSafe {
     pub async fn from(client: Client<T>, item: &impl ToMetadata) -> Self {
         multi_to_ctx(item, client).await
+    }
+}
+
+impl<T> FromContext<T> for T
+where T : State {
+    fn from_ctx(ctx: &Context<T>) -> Option<Self> {
+        Some(ctx.client.read_blocking().state.clone())
     }
 }

@@ -8,11 +8,15 @@ use urlencoding;
 mod lib;
 mod env;
 mod handlers;
+mod state;
 
 use std::io;
 use std::ptr::replace;
+use std::sync::Arc;
+use async_lock::RwLock;
 use tracing_subscriber::{EnvFilter, prelude::*};
 use crate::lib::handler::spawn_handler;
+use crate::state::{State, StateInternal};
 
 struct RedactingWriter<W> {
     inner: W,
@@ -74,11 +78,15 @@ async fn main() {
         .with_span_events(tracing_subscriber::fmt::format::FmtSpan::CLOSE) // Tracks span life
         .with_writer(lookup_writer)
         .init();
+    
+    let state = Arc::new(RwLock::new(StateInternal::default()));
 
-    let client: Client<()> = Client::new_with_state(env.xoxc, env.xoxd, env.host, env.team_id, ());
+    let client: Client<State> = Client::new_with_state(env.xoxc, env.xoxd, env.host, env.team_id, state);
 
     spawn_handler(&client.read().await.event_dispatcher, handlers::test_msg_listen::test_msg_listen);
     spawn_handler(&client.read().await.event_dispatcher, handlers::msg_respond::msg_respond);
+    
+    let _ = client.get_partial().read().await.api_client.set_profile("assets/kasu_katie.png").await;
 
     client.run().await;
 }
