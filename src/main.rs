@@ -75,7 +75,7 @@ async fn main() {
         .with_writer(lookup_writer)
         .init();
 
-    let client: Client = Client::new(env.xoxc, env.xoxd, env.host, env.team_id);
+    let client: Client<()> = Client::new_with_state(env.xoxc, env.xoxd, env.host, env.team_id, ());
 
     spawn_handler(&client.read().await.event_dispatcher, handlers::test_msg_listen::test_msg_listen);
     spawn_handler(&client.read().await.event_dispatcher, handlers::msg_respond::msg_respond);

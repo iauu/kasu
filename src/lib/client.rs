@@ -4,55 +4,86 @@ use async_lock::RwLock;
 use slack_morphism::SlackTeamId;
 use url::Host;
 use crate::lib::api::APIClient;
+use crate::lib::context::AsyncSafe;
 use crate::lib::dispatcher::EventDispatcher;
 use crate::lib::handler::spawn_handler;
 
-#[derive(Debug)]
-pub struct ClientBase {
-    xoxc_token: String,
-    xoxd_token: String,
-    pub(crate) event_dispatcher: EventDispatcher,
+#[derive(Clone, Debug)]
+pub struct ClientState {
+    pub(crate) xoxc_token: String,
+    pub(crate) xoxd_token: String,
     pub ws_reconnect_url: Option<String>,
     pub api_client: APIClient,
     pub host: String,
-    pub team_id: SlackTeamId
+    pub team_id: SlackTeamId,
 }
 
+#[derive(Debug)]
+pub struct ClientBase<T>
+where T: AsyncSafe {
+    pub internal: Arc<RwLock<ClientState>>,
+    pub(crate) event_dispatcher: EventDispatcher<T>,
+    pub state: T,
+}
+
+pub type PartialClient = Arc<RwLock<ClientState>>;
+
+impl<T> Deref for ClientBase<T>
+where T: AsyncSafe {
+
+    type Target = RwLock<ClientState>;
+
+    fn deref(&self) -> &Self::Target {
+        self.internal.deref()
+    }
+}
+
+
 #[derive(Clone, Debug)]
-pub struct Client(pub Arc<RwLock<ClientBase>>);
+pub struct Client<T>(pub Arc<RwLock<ClientBase<T>>>) where T: AsyncSafe;
 
-impl Deref for Client {
+impl<T> Deref for Client<T>
+where T: AsyncSafe {
 
-    type Target = RwLock<ClientBase>;
+    type Target = RwLock<ClientBase<T>>;
 
     fn deref(&self) -> &Self::Target {
         self.0.deref()
     }
 }
 
-impl ClientBase {
+impl<T> ClientBase<T>
+where T: AsyncSafe {
     pub(crate) fn get_xoxc(&self) -> String {
-        self.xoxc_token.clone()
+        self.read_blocking().xoxc_token.clone()
     }
 
     pub(crate) fn get_xoxd(&self) -> String {
-        self.xoxd_token.clone()
+        self.read_blocking().xoxd_token.clone()
     }
 
-    pub fn new(xoxc: String, xoxd: String, host: String, team_id: SlackTeamId) -> Self {
+    pub fn new(xoxc: String, xoxd: String, host: String, team_id: SlackTeamId, state: T) -> Self {
         Self {
-            xoxc_token: xoxc.clone(),
-            xoxd_token: xoxd.clone(),
+            internal: Arc::new(RwLock::new(ClientState {
+                xoxc_token: xoxc.clone(),
+                xoxd_token: xoxd.clone(),
+                ws_reconnect_url: None,
+                api_client: APIClient::new(xoxc, xoxd, host.clone(), team_id.clone()),
+                host,
+                team_id,
+            })),
             event_dispatcher: EventDispatcher::new(4096),
-            ws_reconnect_url: None,
-            api_client: APIClient::new(xoxc, xoxd, host.clone(), team_id.clone()),
-            host,
-            team_id
+            state
         }
+    }
+
+    pub fn get_partial(&self) -> PartialClient {
+        self.internal.clone()
     }
 }
 
-impl Client {
+impl<T> Client<T>
+where T: AsyncSafe {
     pub(crate) fn get_xoxc(&self) -> String {
         self.read_blocking().get_xoxc()
     }
@@ -61,8 +92,8 @@ impl Client {
         self.read_blocking().get_xoxd()
     }
 
-    pub fn new(xoxc: String, xoxd: String, host: String, team_id: SlackTeamId) -> Self {
-        Self(Arc::new(RwLock::new(ClientBase::new(xoxc, xoxd, host, team_id))))
+    pub fn new_with_state(xoxc: String, xoxd: String, host: String, team_id: SlackTeamId, state: T) -> Self {
+        Self(Arc::new(RwLock::new(ClientBase::<T>::new(xoxc, xoxd, host, team_id, state))))
     }
 
     pub async fn run(&self) -> ! {
@@ -77,5 +108,17 @@ impl Client {
         loop {
             std::future::pending::<()>().await;
         }
+    }
+    
+    pub(crate) async fn change_ws_connecting_url(&self, url: String) -> () {
+        self.write().await.write().await.ws_reconnect_url.replace(url);
+    }
+    
+    pub(crate) async fn get_ws_connecting_url(&self) -> Option<String> {
+        self.read().await.read().await.ws_reconnect_url.clone()
+    }
+    
+    pub fn get_partial(&self) -> PartialClient {
+        self.read_blocking().internal.clone()
     }
 }

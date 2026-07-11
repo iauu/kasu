@@ -9,8 +9,8 @@ use serde_json;
 use tokio_retry::strategy::jitter;
 use tokio_tungstenite::tungstenite::client::IntoClientRequest;
 use tracing::instrument;
-use crate::lib::client::Client;
-use crate::lib::context::translate_to_ctx;
+use crate::lib::client::{Client, PartialClient};
+use crate::lib::context::{translate_to_ctx, AsyncSafe};
 use crate::lib::event::Event;
 use tokio::sync::mpsc::error::TryRecvError;
 
@@ -64,13 +64,14 @@ macro_rules! expo_backoff {
 }
 
 #[instrument(level = "info", skip(client), fields(module = module_path!()), target = "ws_task")]
-pub async fn ws_task(client: Client) -> Infallible {
+pub async fn ws_task<T>(client: Client<T>) -> Infallible
+where T: AsyncSafe {
     let mut retry = expo_backoff!();
     loop {
         let mut rx = connect_ws(
             client.get_xoxc(),
             client.get_xoxd(),
-            client.read().await.ws_reconnect_url.clone()
+            client.get_ws_connecting_url().await
         ).await.unwrap();
         let start = Instant::now();
         'conn_loop: loop {
@@ -101,7 +102,7 @@ pub async fn ws_task(client: Client) -> Infallible {
 }
 
 #[instrument(level = "info", skip(client), fields(module = module_path!()), target = "ws_reconnect_url_set")]
-pub async fn set_reconnect(event: WebsocketReconnectUrlEvent, client: Client) {
+pub async fn set_reconnect(event: WebsocketReconnectUrlEvent, client: PartialClient) {
     tracing::info!("Websocket reconnect URL set to \'{}\'", event.url);
     client.write().await.ws_reconnect_url.replace(event.url.clone());
 }

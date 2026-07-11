@@ -1,20 +1,21 @@
 use std::future::Future;
 use async_trait::async_trait;
-use crate::lib::context::Context;
+use crate::lib::context::{AsyncSafe, Context};
 use crate::lib::event::Event;
 use tokio::sync::broadcast::{Sender, Receiver};
 use crate::lib::dispatcher::EventDispatcher;
 
 #[async_trait]
-pub trait EventHandler<Args, Ret> : Send + Sync + Clone + 'static {
-    async fn run(&self, mut rx: Receiver<(Event, Context)>) -> std::convert::Infallible {
+pub trait EventHandler<Args, Ret, T> : Send + Sync + Clone + 'static
+where T : AsyncSafe {
+    async fn run(&self, mut rx: Receiver<(Event, Context<T>)>) -> std::convert::Infallible {
         loop {
             let (event, context) = rx.recv().await.unwrap();
             let _ = self.call(event, context).await;
         }
     }
 
-    async fn call(&self, event: Event, context: Context) -> Option<()>;
+    async fn call(&self, event: Event, context: Context<T>) -> Option<()>;
 }
 
 pub trait AnyRes : Send + Sync + 'static {}
@@ -27,17 +28,18 @@ macro_rules! impl_event_handler {
         ::paste::paste!{
             #[allow(non_snake_case, non_camel_case_types, unused)]
             #[async_trait]
-            impl <F, Fut, __event $(, $arg_name)*, R> EventHandler<(__event, $($arg_name ,)*), R>  for F
+            impl <F, Fut, __event $(, $arg_name)*, R, T> EventHandler<(__event, $($arg_name ,)*), R, T>  for F
             where
                 F: Fn(__event, $($arg_name,)*) -> Fut + Send + Sync + Clone + 'static,
                 Fut: Future<Output = R> + Send + 'static,
                 R: AnyRes + Send + Sync + 'static,
                 __event: $crate::lib::event::FromEvent,
+                T: $crate::lib::context::AsyncSafe,
             $(
-                $arg_name: $crate::lib::context::FromContext,
+                $arg_name: $crate::lib::context::FromContext<T>,
             )*
             {
-                async fn call(&self, event: $crate::lib::event::Event, context: $crate::lib::context::Context) -> Option<()> {
+                async fn call(&self, event: $crate::lib::event::Event, context: $crate::lib::context::Context<T>) -> Option<()> {
                     let event = __event::from_event(event)?;
                     $(
                         let [<$arg_name _a>] = $arg_name::from_ctx(&context)?;
@@ -70,9 +72,10 @@ macro_rules! multi_impl_event_handler {
 
 multi_impl_event_handler!(A0 A1 A2 A3 A4 A5 A6 A7 A8 A9 A10 A11 A12 A13 A14);
 
-pub fn spawn_handler<Args, Ret, H>(dispatcher: &EventDispatcher, handler: H)
+pub fn spawn_handler<Args, Ret, H, T>(dispatcher: &EventDispatcher<T>, handler: H)
 where
-    H: EventHandler<Args, Ret>,
+    H: EventHandler<Args, Ret, T>,
+    T: AsyncSafe
 {
     let rx = dispatcher.subscribe();
     tokio::task::spawn(async move {
