@@ -1,3 +1,4 @@
+use std::env::Args;
 use slack_morphism::{SlackChannelId, SlackTs, SlackUserId};
 use crate::lib::cmd::parse::CmdParse;
 use crate::lib::ctx_trait::{Metadata, ToMetadata};
@@ -54,3 +55,15 @@ impl FromEvent for CmdEvent {
         }
     }
 }
+
+pub trait GetCmd {
+    fn get_cmd(&self) -> String;
+}
+
+impl<Args> GetCmd for CmdParsedEvent<Args> {
+    fn get_cmd(&self) -> String {
+        self.command.clone()
+    }
+}
+
+pub trait FromEventCmd: Send + Sync + FromEvent + GetCmd + 'static {}

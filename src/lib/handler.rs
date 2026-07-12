@@ -51,6 +51,35 @@ macro_rules! impl_event_handler {
                     Some(())
                 }
             }
+
+            #[allow(non_snake_case, non_camel_case_types, unused)]
+            #[async_trait]
+            impl <F, Fut, __event $(, $arg_name)*, R, T> EventHandler<(__event, $($arg_name ,)*), R, T>  for (String, F)
+            where
+                F: Fn(__event, $($arg_name,)*) -> Fut + Send + Sync + Clone + 'static,
+                Fut: Future<Output = R> + Send + 'static,
+                R: AnyRes + Send + Sync + 'static,
+                __event: $crate::lib::cmd::event::FromEventCmd,
+                T: $crate::lib::context::AsyncSafe,
+            $(
+                $arg_name: $crate::lib::context::FromContext<T>,
+            )*
+            {
+                async fn call(&self, event: $crate::lib::event::Event, context: $crate::lib::context::Context<T>) -> Option<()> {
+                    let event = __event::from_event(event)?;
+                    if event.get_cmd() != self.0 {
+                        return None;
+                    }
+                    $(
+                        let [<$arg_name _a>] = $arg_name::from_ctx(&context)?;
+                    )*
+                    let handler = self.1.clone();
+                    let join_handle = ::tokio::task::spawn(async move {
+                        let _ = (handler)(event, $([<$arg_name _a>], )*).await;
+                    });
+                    Some(())
+                }
+            }
         }
     };
 }

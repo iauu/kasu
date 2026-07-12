@@ -69,6 +69,12 @@ macro_rules! impl_cmd_parse {
                     CmdEvent::to_parsed(event)
                 }
             }
+
+            impl <$($arg_name,)*> $crate::lib::cmd::event::FromEventCmd for $crate::lib::cmd::event::CmdParsedEvent<($($arg_name,)*)>
+            where
+            $(
+                $arg_name: $crate::lib::cmd::parse::Parse,
+            )* {}
         }
     };
 }
