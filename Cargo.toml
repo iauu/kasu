@@ -24,6 +24,7 @@ chrono = "0.4.45" # lib:ws
 uuid = { version = "1.23.4", features = ["v4"] } # lib:api
 url = { version = "2.5.8", features = ["serde"] }
 cfg-if = "1.0.4" # lib:api
+nom = "8.0.0"
 
 [features]
 photo = ["reqwest/stream"]

@@ -1,10 +1,12 @@
 use crate::impl_metadata_propagate;
+use crate::lib::cmd::CmdEvent;
 use crate::lib::ctx_trait::{Metadata, ToMetadata};
 use crate::lib::ws::event::WebsocketEvent;
 
 #[derive(Clone, Debug)]
 pub enum Event {
-    Websocket(WebsocketEvent)
+    Websocket(WebsocketEvent),
+    Cmd(CmdEvent)
 }
 
 pub trait FromEvent: Send + Sync + 'static {
@@ -17,4 +19,4 @@ impl FromEvent for Event {
     }
 }
 
-impl_metadata_propagate!(Event, Websocket);
+impl_metadata_propagate!(Event, Websocket Cmd);
