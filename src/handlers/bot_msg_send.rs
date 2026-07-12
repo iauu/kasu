@@ -7,6 +7,7 @@ use crate::lib::ws::event::WebsocketMessageReceivedEvent;
 use crate::lib::context::State;
 use crate::state::{BotState, Profile};
 
+#[cfg(feature = "photo")]
 #[instrument(level = "info", fields(module = module_path!()), target = "bot_msg_send")]
 pub(crate) async fn bot_msg_send(event: WebsocketMessageReceivedEvent, user: Option<PartialUser>, State::State(state): State<BotState>, partial_client: PartialClient) -> Result<(), Error> {
     if event.user_id.0 != partial_client.read().await.user_id.0 {

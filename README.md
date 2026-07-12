@@ -17,6 +17,8 @@ the XOXD token located at cookie at `d=` section. Please make sure the token is 
 
 the XOXC token located at the payload for the multipart form data. You can find this from a `chat.postMessage` when it is posting to a channel (not thread), which the xoxc token is `token` in the myltipart form data payload.
 
+You would also need to create `assets/` folder and include `kasu_katie.png` and `kasu_shy.png` for the profile picture changing
+
 ### What does this do
 
 Mostly right now, this lay down the framework for the communication and websocket to be extended.

@@ -3,6 +3,7 @@ use crate::fail_ignore_handle;
 use crate::lib::client::PartialClient;
 use crate::state::{BotState, Profile};
 
+#[cfg(feature = "photo")]
 pub async fn pfp_task(partial_client: PartialClient, state: BotState) -> ! {
     loop {
         if (state.read().await.current_pfp == Profile::Katie && state.read().await.last_message.elapsed().as_secs() > 300) {

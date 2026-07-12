@@ -15,6 +15,7 @@ use std::io;
 use std::ptr::replace;
 use std::sync::Arc;
 use async_lock::RwLock;
+use cfg_if::cfg_if;
 use tracing_subscriber::{EnvFilter, prelude::*};
 use crate::lib::handler::spawn_handler;
 use crate::state::{BotState, BotStateInternal};
@@ -87,15 +88,18 @@ async fn main() {
 
     spawn_handler(&client.read().await.event_dispatcher, handlers::test_msg_listen::test_msg_listen);
     spawn_handler(&client.read().await.event_dispatcher, handlers::msg_respond::msg_respond);
-    spawn_handler(&client.read().await.event_dispatcher, handlers::bot_msg_send::bot_msg_send);
-    
-    let partial_client = client.get_partial();
-    
-    tokio::task::spawn(async move {
-        pfp_task(partial_client, state).await
-    });
-    
-    let _ = client.get_partial().read().await.api_client.set_profile("assets/kasu_katie.png").await;
+
+    cfg_if! {
+        if #[cfg(feature = "photo")] {
+            spawn_handler(&client.read().await.event_dispatcher, handlers::bot_msg_send::bot_msg_send);
+            let partial_client = client.get_partial();
+            tokio::task::spawn(async move {
+                pfp_task(partial_client, state).await
+            });
+            let _ = client.get_partial().read().await.api_client.set_profile("assets/kasu_katie.png").await;
+        }
+    }
+
 
     client.run().await;
 }
