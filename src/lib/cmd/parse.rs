@@ -24,7 +24,10 @@ pub trait ToParsed<Args> {
 impl<Args, T> ToParsed<Args> for T
 where T: CmdParse<Args> {
     fn to_parsed(event: CmdEvent) -> Option<CmdParsedEvent<Args>> {
-        let (arg_raw, arg) = T::parse(event.arg_raw.as_str()).unwrap();
+        let (arg_raw, arg) = match T::parse(event.arg_raw.as_str()) {
+            Ok(e) => e,
+            Err(_) => return None
+        };
         if arg_raw.len() > 0 {
             return None;
         }
