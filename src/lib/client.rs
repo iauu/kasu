@@ -104,6 +104,7 @@ where T: AsyncSafe {
             crate::lib::ws::conn::ws_task(client).await
         });
         spawn_handler(&self.read().await.event_dispatcher, crate::lib::ws::conn::set_reconnect);
+        spawn_handler(&self.read().await.event_dispatcher, crate::lib::cmd::handler::cmd_handler);
         // loop {
         //     tokio::task::yield_now().await;
         // }

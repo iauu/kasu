@@ -108,11 +108,11 @@ pub struct WebsocketMessageReceivedEvent {
     pub user_team_id: SlackTeamId,
     #[serde(default)]
     pub suppress_notification: bool,
-    event_ts: String,
-    ts: SlackTs,
-    thread_ts: Option<SlackTs>,
+    pub event_ts: String,
+    pub ts: SlackTs,
+    pub thread_ts: Option<SlackTs>,
     #[serde(default)]
-    is_ephemeral: bool
+    pub is_ephemeral: bool
 }
 
 #[derive(Clone, Debug, Deserialize)]

@@ -1,4 +1,5 @@
 pub mod event;
-mod parse;
+pub mod parse;
+pub mod handler;
 
 pub use event::CmdEvent;
