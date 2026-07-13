@@ -2,7 +2,7 @@ use std::env::Args;
 use slack_morphism::{SlackChannelId, SlackTs, SlackUserId};
 use crate::lib::cmd::parse::CmdParse;
 use crate::lib::ctx_trait::{Metadata, ToMetadata};
-use crate::lib::event::{Event, FromEvent};
+use crate::lib::event::{Event, FromEvent, TransformFromEvent};
 
 #[derive(Clone, Debug)]
 pub struct CmdEvent {
@@ -67,3 +67,4 @@ impl<Args> GetCmd for CmdParsedEvent<Args> {
 }
 
 pub trait FromEventCmd: Send + Sync + FromEvent + GetCmd + 'static {}
+pub trait TransFromEventCmd: Send + Sync + TransformFromEvent + GetCmd + 'static {}

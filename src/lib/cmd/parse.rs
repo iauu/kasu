@@ -24,6 +24,12 @@ impl CmdParse<()> for CmdEvent {
     }
 }
 
+#[async_trait::async_trait]
+impl<Args, T: CmdParse<Args>> CmdTransformParse<Args> for T {
+    async fn transform_parse(arg_raw: &str) -> IResult<&str, Args> {
+        Self::parse(arg_raw)
+    }
+}
 
 pub trait ToParsed<Args> {
     fn to_parsed(event: CmdEvent) -> Option<CmdParsedEvent<Args>>;
@@ -97,22 +103,6 @@ macro_rules! impl_cmd_parse {
         ::paste::paste!{
             #[allow(non_snake_case, non_camel_case_types, unused)]
             #[::async_trait::async_trait]
-            impl <$($arg_name,)*> CmdParse<($($arg_name,)*)> for $crate::lib::cmd::CmdEvent
-            where
-            $(
-                $arg_name: $crate::lib::cmd::parse::Parse,
-            )*
-            {
-                fn parse<'a>(arg_raw: &'a str) -> ::nom::IResult<&'a str, ($($arg_name,)* )> {
-                    use ::nom::character::complete::multispace1;
-                    use ::nom::sequence::preceded;
-                    use ::nom::Parser;
-                    ($(preceded(multispace1, $arg_name::parse),)*).parse(&arg_raw)
-                }
-            }
-
-            #[allow(non_snake_case, non_camel_case_types, unused)]
-            #[::async_trait::async_trait]
             impl <$($arg_name,)*> CmdTransformParse<($($arg_name,)*)> for $crate::lib::cmd::CmdEvent
             where
             $(
@@ -132,21 +122,23 @@ macro_rules! impl_cmd_parse {
                 }
             }
 
-            impl <$($arg_name,)*> $crate::lib::event::FromEvent for $crate::lib::cmd::event::CmdParsedEvent<($($arg_name,)*)>
+            #[::async_trait::async_trait]
+            impl <$($arg_name,)*> $crate::lib::event::TransformFromEvent for $crate::lib::cmd::event::CmdParsedEvent<($($arg_name,)*)>
             where
             $(
-                $arg_name: $crate::lib::cmd::parse::Parse,
+                $arg_name: $crate::lib::cmd::parse::TransformParse + $crate::lib::context::AsyncSafe,
             )* {
-                fn from_event(event: $crate::lib::event::Event) -> Option<Self> {
+                async fn transform_from_event(event: $crate::lib::event::Event) -> Option<Self> {
+                    use $crate::lib::event::FromEvent;
                     let event: CmdEvent = CmdEvent::from_event(event)?;
-                    CmdEvent::to_parsed(event)
+                    CmdEvent::to_transform_parsed(event).await
                 }
             }
 
-            impl <$($arg_name,)*> $crate::lib::cmd::event::FromEventCmd for $crate::lib::cmd::event::CmdParsedEvent<($($arg_name,)*)>
+            impl <$($arg_name,)*> $crate::lib::cmd::event::TransFromEventCmd for $crate::lib::cmd::event::CmdParsedEvent<($($arg_name,)*)>
             where
             $(
-                $arg_name: $crate::lib::cmd::parse::Parse,
+                $arg_name: $crate::lib::cmd::parse::TransformParse + $crate::lib::context::AsyncSafe,
             )* {}
         }
     };

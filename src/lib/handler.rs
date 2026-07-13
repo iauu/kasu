@@ -33,14 +33,14 @@ macro_rules! impl_event_handler {
                 F: Fn(__event, $($arg_name,)*) -> Fut + Send + Sync + Clone + 'static,
                 Fut: Future<Output = R> + Send + 'static,
                 R: AnyRes + Send + Sync + 'static,
-                __event: $crate::lib::event::FromEvent,
+                __event: $crate::lib::event::TransformFromEvent,
                 T: $crate::lib::context::AsyncSafe,
             $(
                 $arg_name: $crate::lib::context::FromContext<T>,
             )*
             {
                 async fn call(&self, event: $crate::lib::event::Event, context: $crate::lib::context::Context<T>) -> Option<()> {
-                    let event = __event::from_event(event)?;
+                    let event = __event::transform_from_event(event).await?;
                     $(
                         let [<$arg_name _a>] = $arg_name::from_ctx(&context)?;
                     )*
@@ -59,7 +59,7 @@ macro_rules! impl_event_handler {
                 F: Fn(__event, $($arg_name,)*) -> Fut + Send + Sync + Clone + 'static,
                 Fut: Future<Output = R> + Send + 'static,
                 R: AnyRes + Send + Sync + 'static,
-                __event: $crate::lib::cmd::event::FromEventCmd,
+                __event: $crate::lib::cmd::event::TransFromEventCmd,
                 T: $crate::lib::context::AsyncSafe,
                 S: ToString + Send + Sync + Clone + 'static,
             $(
@@ -67,7 +67,7 @@ macro_rules! impl_event_handler {
             )*
             {
                 async fn call(&self, event: $crate::lib::event::Event, context: $crate::lib::context::Context<T>) -> Option<()> {
-                    let event = __event::from_event(event)?;
+                    let event = __event::transform_from_event(event).await?;
                     if event.get_cmd() != self.0.to_string() {
                         return None;
                     }
