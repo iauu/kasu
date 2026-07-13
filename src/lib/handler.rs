@@ -36,13 +36,13 @@ macro_rules! impl_event_handler {
                 __event: $crate::lib::event::TransformFromEvent,
                 T: $crate::lib::context::AsyncSafe,
             $(
-                $arg_name: $crate::lib::context::FromContext<T>,
+                $arg_name: $crate::lib::context::TransformFromContext<T>,
             )*
             {
                 async fn call(&self, event: $crate::lib::event::Event, context: $crate::lib::context::Context<T>) -> Option<()> {
                     let event = __event::transform_from_event(event).await?;
                     $(
-                        let [<$arg_name _a>] = $arg_name::from_ctx(&context)?;
+                        let [<$arg_name _a>] = $arg_name::transform_from_ctx(&context).await?;
                     )*
                     let handler = self.clone();
                     let join_handle = ::tokio::task::spawn(async move {
@@ -63,7 +63,7 @@ macro_rules! impl_event_handler {
                 T: $crate::lib::context::AsyncSafe,
                 S: ToString + Send + Sync + Clone + 'static,
             $(
-                $arg_name: $crate::lib::context::FromContext<T>,
+                $arg_name: $crate::lib::context::TransformFromContext<T>,
             )*
             {
                 async fn call(&self, event: $crate::lib::event::Event, context: $crate::lib::context::Context<T>) -> Option<()> {
@@ -72,7 +72,7 @@ macro_rules! impl_event_handler {
                         return None;
                     }
                     $(
-                        let [<$arg_name _a>] = $arg_name::from_ctx(&context)?;
+                        let [<$arg_name _a>] = $arg_name::transform_from_ctx(&context).await?;
                     )*
                     let handler = self.1.clone();
                     let join_handle = ::tokio::task::spawn(async move {

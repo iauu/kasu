@@ -5,7 +5,8 @@ use slack_morphism::{SlackChannelId, SlackTs};
 use crate::lib::api::error::Error;
 use crate::lib::api::MessageData;
 use crate::lib::client::{Client, ClientState, PartialClient};
-use crate::lib::context::{AsyncSafe, FromContext};
+use crate::lib::context::{AsyncSafe, AsyncTranslate, FromContext};
+use crate::lib::ctx_item::Messageable;
 use crate::lib::ctx_trait::Sendable;
 
 #[derive(Clone, Debug)]
@@ -30,3 +31,5 @@ impl Sendable for PartialChannel {
         self.client.read().await.api_client.chat_post_message(self.channel_id.clone(), None, message).await
     }
 }
+
+impl AsyncTranslate for PartialChannel {}

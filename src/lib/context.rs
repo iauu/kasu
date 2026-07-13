@@ -51,12 +51,31 @@ where T : AsyncSafe {
     fn from_ctx(ctx: &Context<T>) -> Option<Self> where Self: Sized;
 }
 
+pub(crate) trait AsyncTranslate {}
+
+
+#[async_trait::async_trait]
+pub trait TransformFromContext<T>: Send + Sync + 'static
+where T : AsyncSafe {
+    async fn transform_from_ctx(ctx: &Context<T>) -> Option<Self> where Self: Sized;
+}
+
+#[async_trait::async_trait]
+impl<X: AsyncSafe, T: FromContext<X> + AsyncTranslate> TransformFromContext<X> for T {
+    async fn transform_from_ctx(ctx: &Context<X>) -> Option<Self> {
+        Self::from_ctx(ctx)
+    }
+}
+
 impl<T> FromContext<T> for Context<T>
 where T: AsyncSafe {
     fn from_ctx(ctx: &Context<T>) -> Option<Self> {
         Some(ctx.clone())
     }
 }
+
+impl<T> AsyncTranslate for Context<T>
+where T: AsyncSafe {}
 
 impl<T> FromContext<T> for Client<T>
 where T: AsyncSafe {
@@ -65,6 +84,9 @@ where T: AsyncSafe {
         Some(ctx.client.clone())
     }
 }
+
+impl<T> AsyncTranslate for Client<T>
+where T : AsyncSafe {}
 
 impl <T> FromContext<T> for PartialClient
 where T : AsyncSafe {
@@ -75,6 +97,8 @@ where T : AsyncSafe {
         Some(ctx.client.get_partial())
     }
 }
+
+impl AsyncTranslate for PartialClient {}
 
 pub async fn translate_to_ctx<T>(event: Event, client: Client<T>) -> (Event, Context<T>)
 where T: AsyncSafe {
@@ -93,14 +117,26 @@ where T: AsyncSafe {
     }
 }
 
-impl<X, T> FromContext<X> for Option<T>
-where T: FromContext<X>,
- X: AsyncSafe {
-    fn from_ctx(ctx: &Context<X>) -> Option<Self>
+// impl<X, T> FromContext<X> for Option<T>
+// where T: FromContext<X>,
+//  X: AsyncSafe {
+//     fn from_ctx(ctx: &Context<X>) -> Option<Self>
+//     where
+//         Self: Sized
+//     {
+//         Some(T::from_ctx(ctx))
+//     }
+// }
+
+#[async_trait::async_trait]
+impl<X, T> TransformFromContext<X> for Option<T>
+where T: TransformFromContext<X>,
+      X: AsyncSafe {
+    async fn transform_from_ctx(ctx: &Context<X>) -> Option<Self>
     where
         Self: Sized
     {
-        Some(T::from_ctx(ctx))
+        Some(T::transform_from_ctx(ctx).await)
     }
 }
 
@@ -119,6 +155,9 @@ where T : StateMarker
     }
 }
 
+impl<T> AsyncTranslate for T
+where T : StateMarker {}
+
 impl<T> FromContext<T> for State<T>
 where T : AsyncSafe {
     fn from_ctx(ctx: &Context<T>) -> Option<Self>
@@ -128,3 +167,6 @@ where T : AsyncSafe {
         Some(State::State(ctx.client.read_blocking().state.clone()))
     }
 }
+
+impl<T> AsyncTranslate for State<T>
+where T : AsyncSafe {}

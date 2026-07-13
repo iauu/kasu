@@ -3,7 +3,7 @@ use slack_morphism::{SlackChannelId, SlackTs};
 use crate::lib::api::error::Error;
 use crate::lib::api::MessageData;
 use crate::lib::client::{Client, PartialClient};
-use crate::lib::context::{AsyncSafe, FromContext};
+use crate::lib::context::{AsyncSafe, AsyncTranslate, FromContext};
 use crate::lib::ctx_trait::{Sendable, ThreadSendable};
 
 #[derive(Clone, Debug)]
@@ -40,3 +40,4 @@ impl ThreadSendable for Messageable {
     }
 }
 
+impl AsyncTranslate for Messageable {}
