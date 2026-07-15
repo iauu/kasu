@@ -1,5 +1,6 @@
 use std::sync::Arc;
 use async_lock::RwLock;
+use sqlx::SqlitePool;
 use crate::lib::context;
 use crate::lib::context::{AsyncSafe, StateUnwrappedMarker};
 
@@ -21,7 +22,8 @@ impl Profile {
 #[derive(Debug)]
 pub struct BotStateInternal {
     pub last_message: std::time::Instant,
-    pub current_pfp: Profile
+    pub current_pfp: Profile,
+    pub db: SqlitePool
 }
 
 
@@ -29,11 +31,21 @@ pub type BotState = Arc<RwLock<BotStateInternal>>;
 
 impl context::StateUnwrappedMarker for BotStateInternal {}
 
-impl Default for BotStateInternal {
-    fn default() -> Self {
+// impl Default for BotStateInternal {
+//     fn default() -> Self {
+//         Self {
+//             last_message: std::time::Instant::now(),
+//             current_pfp: Profile::Katie
+//         }
+//     }
+// }
+
+impl BotStateInternal {
+    pub fn init(pool: SqlitePool) -> Self {
         Self {
             last_message: std::time::Instant::now(),
-            current_pfp: Profile::Katie
+            current_pfp: Profile::Katie,
+            db: pool
         }
     }
 }

@@ -6,4 +6,5 @@ services:
     env_file:
       - .env
     volumes:
-      - ./assets:/app/assets
+      - ./assets:/app/assets:ro
+      - ./data:/app/data

@@ -13,9 +13,11 @@ mod tasks;
 
 use std::io;
 use std::ptr::replace;
+use std::str::FromStr;
 use std::sync::Arc;
 use async_lock::RwLock;
 use cfg_if::cfg_if;
+use sqlx::sqlite::SqliteConnectOptions;
 use tracing_subscriber::{EnvFilter, prelude::*};
 use crate::lib::handler::spawn_handler;
 use crate::state::{BotState, BotStateInternal};
@@ -89,8 +91,14 @@ async fn main() {
         .with_span_events(tracing_subscriber::fmt::format::FmtSpan::CLOSE) // Tracks span life
         .with_writer(lookup_writer)
         .init();
+
+    let options = SqliteConnectOptions::from_str("sqlite://data/data.db")
+        .unwrap()
+        .create_if_missing(true);
+
+    let pool = sqlx::sqlite::SqlitePool::connect_with(options).await.unwrap();
     
-    let state = Arc::new(RwLock::new(BotStateInternal::default()));
+    let state = Arc::new(RwLock::new(BotStateInternal::init(pool)));
 
     let client: Client<BotState> = Client::new_with_state(env.sub_xoxc, env.xoxc, env.xoxd, env.host, env.team_id, state.clone(), env.user_id);
 
