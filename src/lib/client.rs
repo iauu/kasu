@@ -10,6 +10,7 @@ use crate::lib::handler::spawn_handler;
 
 #[derive(Clone, Debug)]
 pub struct ClientState {
+    pub(crate) sub_xoxc_token: Option<String>,
     pub(crate) xoxc_token: String,
     pub(crate) xoxd_token: String,
     pub ws_reconnect_url: Option<String>,
@@ -63,13 +64,14 @@ where T: AsyncSafe {
         self.read_blocking().xoxd_token.clone()
     }
 
-    pub fn new(xoxc: String, xoxd: String, host: String, team_id: SlackTeamId, state: T, user_id: SlackUserId) -> Self {
+    pub fn new(sub_xoxc: Option<String>, xoxc: String, xoxd: String, host: String, team_id: SlackTeamId, state: T, user_id: SlackUserId) -> Self {
         Self {
             internal: Arc::new(RwLock::new(ClientState {
+                sub_xoxc_token: sub_xoxc.clone(),
                 xoxc_token: xoxc.clone(),
                 xoxd_token: xoxd.clone(),
                 ws_reconnect_url: None,
-                api_client: APIClient::new(xoxc, xoxd, host.clone(), team_id.clone()),
+                api_client: APIClient::new(sub_xoxc, xoxc, xoxd, host.clone(), team_id.clone()),
                 host,
                 team_id,
                 user_id
@@ -94,8 +96,8 @@ where T: AsyncSafe {
         self.read_blocking().get_xoxd()
     }
 
-    pub fn new_with_state(xoxc: String, xoxd: String, host: String, team_id: SlackTeamId, state: T, user_id: SlackUserId) -> Self {
-        Self(Arc::new(RwLock::new(ClientBase::<T>::new(xoxc, xoxd, host, team_id, state, user_id))))
+    pub fn new_with_state(sub_xoxc: Option<String>, xoxc: String, xoxd: String, host: String, team_id: SlackTeamId, state: T, user_id: SlackUserId) -> Self {
+        Self(Arc::new(RwLock::new(ClientBase::<T>::new(sub_xoxc, xoxc, xoxd, host, team_id, state, user_id))))
     }
 
     pub async fn run(&self) -> ! {

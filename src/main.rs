@@ -23,6 +23,7 @@ use crate::tasks::pfp_task::pfp_task;
 
 struct RedactingWriter<W> {
     inner: W,
+    sub_token_c: Option<String>,
     token_c: String,
     token_d: String,
     decoded_token_d: String
@@ -32,10 +33,14 @@ impl<W: io::Write> io::Write for RedactingWriter<W> {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
         let log_str = String::from_utf8_lossy(buf);
 
-        let redacted = log_str
+        let mut redacted = log_str
             .replace(&self.token_c, "[REDACTED_XOXC]")
             .replace(&self.token_d, "[REDACTED_XOXD]")
             .replace(&self.decoded_token_d, "[REDACTED_XOXD]");
+
+        if let Some(x) = self.sub_token_c.clone() {
+            redacted = redacted.replace(&x, "[REDACTED_SUB_XOXC]");
+        }
 
         self.inner.write_all(redacted.as_bytes())?;
 
@@ -47,6 +52,7 @@ impl<W: io::Write> io::Write for RedactingWriter<W> {
     }
 }
 struct RedactingMakeWriter {
+    sub_token_c: Option<String>,
     token_c: String,
     token_d: String,
     decoded_token_d: String
@@ -58,6 +64,7 @@ impl<'a> tracing_subscriber::fmt::MakeWriter<'a> for RedactingMakeWriter {
     fn make_writer(&'a self) -> Self::Writer {
         RedactingWriter {
             inner: io::stdout(),
+            sub_token_c: self.sub_token_c.clone(),
             token_c: self.token_c.clone(),
             token_d: self.token_d.clone(),
             decoded_token_d: self.decoded_token_d.clone()
@@ -70,6 +77,7 @@ async fn main() {
     let env : Env = from_env().expect("deserialize from env");
 
     let lookup_writer = RedactingMakeWriter {
+        sub_token_c: env.sub_xoxc.clone(),
         token_c: env.xoxc.clone(),
         token_d: env.xoxd.clone(),
         decoded_token_d: urlencoding::decode(&env.xoxd).unwrap().parse().unwrap()
@@ -84,7 +92,7 @@ async fn main() {
     
     let state = Arc::new(RwLock::new(BotStateInternal::default()));
 
-    let client: Client<BotState> = Client::new_with_state(env.xoxc, env.xoxd, env.host, env.team_id, state.clone(), env.user_id);
+    let client: Client<BotState> = Client::new_with_state(env.sub_xoxc, env.xoxc, env.xoxd, env.host, env.team_id, state.clone(), env.user_id);
 
     spawn_handler(&client.read().await.event_dispatcher, handlers::test_msg_listen::test_msg_listen);
     spawn_handler(&client.read().await.event_dispatcher, handlers::msg_respond::msg_respond);
