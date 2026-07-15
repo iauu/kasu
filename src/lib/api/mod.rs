@@ -9,7 +9,7 @@ use reqwest::Client;
 use reqwest::header::HeaderMap;
 use slack_morphism::blocks::SlackBlock;
 use slack_morphism::{SlackBasicUserInfo, SlackChannelId, SlackChannelInfo, SlackTeamId, SlackTs, SlackUserId, SlackUserProfile};
-use slack_morphism::api::SlackApiConversationsInfoResponse;
+use slack_morphism::api::{SlackApiConversationsInfoResponse, SlackApiConversationsMembersResponse};
 use url::Host;
 use crate::lib::api::error::Error;
 use crate::lib::api::model::{ConversationsCreateResponse, ListAssignmentsResponse, OkResp, PostMessageResponse, Preference, PreparePhotoResponse};
@@ -213,6 +213,30 @@ impl APIClient {
     }
 
     pub async fn get_channel_members(&self, channel: SlackChannelId) -> Result<Vec<SlackUserId>, Error> {
-        todo!();
+        let form = self.get_base_form(TokenKind::SubXoxc)
+            .text("channel", channel.0.clone());
+
+        let mut member_list: Vec<SlackUserId> = Vec::new();
+        let req = self.reqwest_client.post(&format!("https://{}/api/conversations.members", self.host)).multipart(form);
+        let result = parse_req!(req, SlackApiConversationsMembersResponse);
+        let (member, meta) = (result.members, result.response_metadata);
+        let mut cursor = meta.map(|x| x.next_cursor).flatten();
+        member_list.extend(member);
+        loop {
+            if let Some(cursor_id) = cursor {
+                let form = self.get_base_form(TokenKind::SubXoxc)
+                    .text("channel", channel.0.clone())
+                    .text("cursor", cursor_id.0);
+                let req = self.reqwest_client.post(&format!("https://{}/api/conversations.members", self.host)).multipart(form);
+                let result = parse_req!(req, SlackApiConversationsMembersResponse);
+                let (member, meta) = (result.members, result.response_metadata);
+                cursor = meta.map(|x| x.next_cursor).flatten();
+                member_list.extend(member);
+            } else {
+                break;
+            }
+        }
+
+        Ok(member_list)
     }
 }
