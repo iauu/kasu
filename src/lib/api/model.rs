@@ -1,3 +1,4 @@
+use std::fmt::Display;
 use serde::{Deserialize, Serialize};
 use slack_morphism::{SlackChannelId, SlackChannelInfo, SlackTs, SlackUserId};
 use slack_morphism::blocks::SlackBlock;
@@ -78,4 +79,31 @@ pub struct ConversationsCreateResponse {
 pub struct PreparePhotoResponse {
     pub id: String,
     pub url: String
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, Copy)]
+pub enum SlackChannelPreference {
+    Post,
+    Thread,
+    AtChannel,
+    AtHere,
+    Huddle
+}
+
+impl Display for SlackChannelPreference {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let str = match self {
+            SlackChannelPreference::Post => "who_can_post".to_string(),
+            SlackChannelPreference::Thread => "can_thread".to_string(),
+            SlackChannelPreference::AtChannel => "enable_at_channel".to_string(),
+            SlackChannelPreference::AtHere => "enable_at_here".to_string(),
+            SlackChannelPreference::Huddle => "can_huddle".to_string()
+        };
+        write!(f, "{}", str)
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct ChannelPreferenceGet {
+    pub pref_value: serde_json::Value
 }

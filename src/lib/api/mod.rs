@@ -12,7 +12,7 @@ use slack_morphism::{SlackBasicUserInfo, SlackChannelId, SlackChannelInfo, Slack
 use slack_morphism::api::{SlackApiConversationsInfoResponse, SlackApiConversationsMembersResponse};
 use url::Host;
 use crate::lib::api::error::Error;
-use crate::lib::api::model::{ConversationsCreateResponse, ListAssignmentsResponse, OkResp, PostMessageResponse, Preference, PreparePhotoResponse};
+use crate::lib::api::model::{ChannelPreferenceGet, ConversationsCreateResponse, ListAssignmentsResponse, OkResp, PostMessageResponse, Preference, PreparePhotoResponse, SlackChannelPreference};
 
 #[derive(Clone, Debug)]
 pub struct APIClient {
@@ -121,6 +121,15 @@ impl APIClient {
         let req = self.reqwest_client.post(&format!("https://{}/api/channels.prefs.set", self.host)).multipart(form);
 
         parse_req!(req, OkResp).as_result()
+    }
+
+    pub async fn get_channel_permission(&self, channel: SlackChannelId, pref: SlackChannelPreference) -> Result<serde_json::Value, Error> {
+        let form = self.get_base_form(TokenKind::Xoxc)
+            .text("channel_id", channel.0)
+            .text("prefs", pref.to_string());
+        let req = self.reqwest_client.post(&format!("https://{}/api/channels.prefs.get", self.host)).multipart(form);
+
+        Ok(parse_req!(req, ChannelPreferenceGet).pref_value)
     }
 
     fn get_base_form(&self, token_kind: TokenKind) -> reqwest::multipart::Form {
