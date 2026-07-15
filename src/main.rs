@@ -105,6 +105,7 @@ async fn main() {
     spawn_handler(&client.read().await.event_dispatcher, handlers::test_msg_listen::test_msg_listen);
     spawn_handler(&client.read().await.event_dispatcher, handlers::msg_respond::msg_respond);
     spawn_handler(&client.read().await.event_dispatcher, ("!get_user_id", handlers::get_user_id::get_user_id));
+    spawn_handler(&client.read().await.event_dispatcher, ("k!init", handlers::init::init_channel));
 
     cfg_if! {
         if #[cfg(feature = "photo")] {
