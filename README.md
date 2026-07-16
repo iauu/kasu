@@ -1,8 +1,11 @@
 # kasu
 
+A slack userbot to limit who can join/speak in your channel!
+
 ### How to setup
 Create `.env` with the following content
 ```env
+SUB_XOXC=
 XOXC=
 XOXD=
 HOST=hackclub.enterprise.slack.com
@@ -18,6 +21,8 @@ the XOXD token located at cookie at `d=` section. Please make sure the token is 
 the XOXC token located at the payload for the multipart form data. You can find this from a `chat.postMessage` when it is posting to a channel (not thread), which the xoxc token is `token` in the myltipart form data payload.
 
 You would also need to create `assets/` folder and include `kasu_katie.png` and `kasu_shy.png` for the profile picture changing
+
+`SUB_XOXC` token is used when you are in enterprise workspace. This can be obtained from Local Storage -> `localConfig_v2` `data["teams"]["T??????"]["token"]`. This is different to the enterprise token and is needed for certain API.
 
 ### What does this do
 
@@ -74,11 +79,11 @@ API List:
 - [ ] Slash command invoke
 - [ ] Blockkit interaction
 - [x] Channel Send Restriction
-- [ ] Channel Restriction
+- [x] Channel Restriction
 - [ ] group Restriction
 - [x] Channel manager read
 
 Websocket:
-- [ ] User channel join
+- [x] User channel join
 - [ ] User group join
 - [ ] Message subtype
