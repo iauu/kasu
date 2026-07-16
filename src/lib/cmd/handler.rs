@@ -16,7 +16,7 @@ pub async fn cmd_handler<T: AsyncSafe>(event: WebsocketMessageReceivedEvent, cli
             arg_raw = text[index..].to_string();
         } else {
             command = text;
-            arg_raw = String::new();
+            arg_raw = String::from(" ");
         }
         let event = CmdEvent {
             command,

@@ -107,5 +107,7 @@ pub(crate) async fn channel_join(
         }).await;
 
         let _ = channel.reply(MessageData::Raw(format!("Hi {core_info_str}, welcome to stay here!"))).await;
+    } else {
+        let _ = partial_client.read().await.api_client.remove_user(channel.channel_id.clone(), user.user_id).await;
     }
 }

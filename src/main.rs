@@ -19,6 +19,7 @@ use async_lock::RwLock;
 use cfg_if::cfg_if;
 use sqlx::sqlite::SqliteConnectOptions;
 use tracing_subscriber::{EnvFilter, prelude::*};
+use crate::handlers::user_join_event::channel_join;
 use crate::lib::handler::spawn_handler;
 use crate::state::{BotState, BotStateInternal};
 use crate::tasks::pfp_task::pfp_task;
@@ -106,6 +107,7 @@ async fn main() {
     spawn_handler(&client.read().await.event_dispatcher, handlers::msg_respond::msg_respond);
     spawn_handler(&client.read().await.event_dispatcher, ("!get_user_id", handlers::get_user_id::get_user_id));
     spawn_handler(&client.read().await.event_dispatcher, ("k!init", handlers::init::init_channel));
+    spawn_handler(&client.read().await.event_dispatcher, channel_join);
 
     cfg_if! {
         if #[cfg(feature = "photo")] {

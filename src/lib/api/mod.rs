@@ -175,7 +175,6 @@ impl APIClient {
 
     pub async fn remove_user(&self, channel: SlackChannelId, user: SlackUserId) -> Result<(), Error> {
         let form = self.get_base_form(TokenKind::Xoxc)
-            .text("role_id", "Rl0A")
             .text("channel", channel.to_string())
             .text("user", user.to_string());
 
