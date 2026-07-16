@@ -72,6 +72,8 @@ pub(crate) async fn channel_join(
                         .bind(user.user_id.0.clone())
                         .execute(&pool).await.unwrap();
                     allowed = true;
+                } else {
+                    let _ = channel.reply(MessageData::Raw(format!("Hi {core_info_str}, access have been blocked as this is a restricted channel."))).await;
                 }
             },
             None => {
