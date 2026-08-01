@@ -26,6 +26,7 @@ url = { version = "2.5.8", features = ["serde"] }
 cfg-if = "1.0.4" # lib:api
 nom = "8.0.0" # lib:cmd:parser
 sqlx = { version = "0.8", features = ["runtime-tokio", "sqlite"] }
+rand = "0.10.2"
 
 [features]
 photo = ["reqwest/stream"]

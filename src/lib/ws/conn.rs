@@ -1,6 +1,6 @@
 use std::convert::Infallible;
 use std::time::{Duration, Instant};
-use futures_util::StreamExt;
+use futures_util::{SinkExt, StreamExt};
 use tokio_tungstenite::connect_async;
 use tokio::sync::mpsc::{unbounded_channel, UnboundedReceiver, UnboundedSender};
 use crate::lib::ws::event::{WebsocketEvent, WebsocketReconnectUrlEvent};
@@ -13,6 +13,8 @@ use crate::lib::client::{Client, PartialClient};
 use crate::lib::context::{translate_to_ctx, AsyncSafe};
 use crate::lib::event::Event;
 use tokio::sync::mpsc::error::TryRecvError;
+use tokio_tungstenite::tungstenite::Message;
+use rand::{random_range};
 
 #[derive(Error, Debug)]
 pub enum WebsocketInitialConnectionError {
@@ -20,7 +22,10 @@ pub enum WebsocketInitialConnectionError {
     Error(#[from] tokio_tungstenite::tungstenite::Error)
 }
 
-
+fn gen_ping() -> String {
+    let v = random_range(0..65536);
+    format!(r#"{{"type":"ping","id":{}}}"#, v)
+}
 
 /// Handle only connecting the websocket and return a receiver.
 /// When the websocket disconnect, the sender will be dropped and therefore
@@ -36,22 +41,43 @@ pub async fn connect_ws(xoxc: String, xoxd: String, url: Option<String>) -> Resu
     let (mut socket, _) = connect_async(request).await?;
     let (tx, rx) = unbounded_channel::<WebsocketEvent>();
     tokio::spawn(async move  {
-        while let Some(message) = socket.next().await {
-            let message = match message {
-                Ok(msg) => msg,
-                Err(e) => {
-                    tracing::warn!("Websocket error: {}", e);
-                    panic!("Websocket error: {}", e);
-                }
-            };
-            let message = message.to_text().unwrap();
-            let result: Result<WebsocketEvent, _> = serde_json::from_str(message);
-            match result {
-                Ok(event) => {
-                    tx.send(event).unwrap();
+        let mut retries = 0;
+        loop {
+            tokio::select! {
+                Some(message) = socket.next() => {
+                    retries = 0;
+                    let message = match message {
+                        Ok(msg) => msg,
+                        Err(e) => {
+                            tracing::error!("Websocket error: {}", e);
+                            break;
+                        }
+                    };
+                    let message = message.to_text().unwrap();
+                    let result: Result<WebsocketEvent, _> = serde_json::from_str(message);
+                    match result {
+                        Ok(event) => {
+                            tx.send(event).unwrap();
+                        },
+                        Err(e) => {
+                            tracing::warn!("Failed to parse event. msg: \'{}\', error: {:?}", message, e)
+                        }
+                    };
                 },
-                Err(e) => {
-                    tracing::warn!("Failed to parse event. msg: \'{}\', error: {:?}", message, e)
+                _ = tokio::time::sleep(tokio::time::Duration::from_secs(5)) => {
+                    if retries > 3 {
+                        tracing::error!("Websocket idle disconnection");
+                        break;
+                    }
+                    if let Err(e) = socket.send(Message::Text(gen_ping().into())).await {
+                        tracing::error!("Websocket send error: {}", e);
+                        break;
+                    }
+                    retries += 1;
+                },
+                else => {
+                    tracing::error!("Websocket disconnected");
+                    break;
                 }
             }
         }
