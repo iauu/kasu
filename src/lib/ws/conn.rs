@@ -27,6 +27,8 @@ fn gen_ping() -> String {
     format!(r#"{{"type":"ping","id":{}}}"#, v)
 }
 
+const MAX_TIMEOUT: u64 = 600;
+
 /// Handle only connecting the websocket and return a receiver.
 /// When the websocket disconnect, the sender will be dropped and therefore
 /// An error will be raised on the receiver when the receiver attempt to receive
@@ -86,7 +88,7 @@ pub async fn connect_ws(xoxc: String, xoxd: String, url: Option<String>) -> Resu
 }
 
 macro_rules! expo_backoff {
-    () => {tokio_retry::strategy::ExponentialBackoff::from_millis(100).map(jitter).take(20)};
+    () => {::tokio_retry::strategy::ExponentialBackoff::from_millis(100).max_delay(::std::time::Duration::from_secs(MAX_TIMEOUT)).map(jitter)};
 }
 
 #[instrument(level = "info", skip(client), fields(module = module_path!()), target = "ws_task")]
@@ -94,36 +96,46 @@ pub async fn ws_task<T>(client: Client<T>) -> Infallible
 where T: AsyncSafe {
     let mut retry = expo_backoff!();
     loop {
-        let mut rx = connect_ws(
+        let start = Instant::now();
+        let conn = connect_ws(
             client.get_xoxc(),
             client.get_xoxd(),
             client.get_ws_connecting_url().await
-        ).await.unwrap();
-        let start = Instant::now();
-        'conn_loop: loop {
-            let message = match rx.try_recv() {
-                Ok(message) => message,
-                Err(e) => {
-                    match e {
-                        TryRecvError::Empty => {
-                            tokio::time::sleep(Duration::from_millis(10)).await;
-                            continue 'conn_loop;
-                        },
-                        e @ _ => {
-                            tracing::error!(?e, "websocket error");
-                            break 'conn_loop;
+        ).await;
+        match conn {
+            Ok(mut rx) => {
+                'conn_loop: loop {
+                    let message = match rx.try_recv() {
+                        Ok(message) => message,
+                        Err(e) => {
+                            match e {
+                                TryRecvError::Empty => {
+                                    tokio::time::sleep(Duration::from_millis(10)).await;
+                                    continue 'conn_loop;
+                                },
+                                e @ _ => {
+                                    tracing::error!(?e, "websocket error");
+                                    break 'conn_loop;
+                                }
+                            }
                         }
-                    }
+                    };
+                    let (event, context) = translate_to_ctx(message.into(), client.clone()).await;
+                    client.read().await.event_dispatcher.send(event, context);
                 }
-            };
-            let (event, context) = translate_to_ctx(message.into(), client.clone()).await;
-            client.read().await.event_dispatcher.send(event, context);
+            },
+            Err(e) => {
+                tracing::error!("Websocket connection error: {}", e);
+            }
         }
         if start.elapsed().as_secs_f32() > 30f32 {
             retry = expo_backoff!();
             continue;
         }
-        tokio::time::sleep(retry.next().unwrap()).await;
+        tokio::time::sleep(retry.next().unwrap_or_else(|| {
+            tracing::error!("Missing websocket timeout value");
+            Duration::from_secs(MAX_TIMEOUT)
+        })).await;
     }
 }
 
