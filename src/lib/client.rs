@@ -2,7 +2,6 @@ use std::ops::Deref;
 use std::sync::Arc;
 use async_lock::RwLock;
 use slack_morphism::{SlackTeamId, SlackUserId};
-use url::Host;
 use crate::lib::api::APIClient;
 use crate::lib::context::AsyncSafe;
 use crate::lib::dispatcher::EventDispatcher;
@@ -107,6 +106,7 @@ where T: AsyncSafe {
         });
         spawn_handler(&self.read().await.event_dispatcher, crate::lib::ws::conn::set_reconnect);
         spawn_handler(&self.read().await.event_dispatcher, crate::lib::cmd::handler::cmd_handler);
+        spawn_handler(&self.read().await.event_dispatcher, crate::lib::ws::conn::unset_reconnect_url);
         // loop {
         //     tokio::task::yield_now().await;
         // }

@@ -4,7 +4,7 @@ use slack_morphism::{SlackAppId, SlackBotId, SlackChannelId, SlackChannelType, S
 use crate::impl_metadata_propagate;
 use crate::lib::event::{Event, FromEvent};
 use crate::lib::blocks::SlackBlock;
-use crate::lib::ctx_trait::{Metadata, ToChannelId, ToMetadata};
+use crate::lib::ctx_trait::{Metadata, ToMetadata};
 
 #[derive(Clone, Debug, Deserialize)]
 #[serde(tag = "type")]
@@ -20,7 +20,9 @@ pub enum WebsocketEvent {
     #[serde(rename = "member_joined_channel")]
     ChannelMemberJoin(WebsocketChannelMemberJoinEvent),
     #[serde(rename = "member_left_channel")]
-    ChannelMemberLeft(WebsocketChannelMemberLeaveEvent)
+    ChannelMemberLeft(WebsocketChannelMemberLeaveEvent),
+    #[serde(rename = "error")]
+    WebsocketError(WebsocketErrorEvent)
 }
 
 impl FromEvent for WebsocketEvent {
@@ -214,6 +216,14 @@ pub struct WebsocketChannelMemberLeaveEvent {
     pub ts: SlackTs
 }
 
+#[derive(Clone, Debug, Deserialize)]
+pub struct WebsocketErrorEvent {
+    pub msg: Option<String>,
+    pub code: Option<usize>,
+    pub source: Option<String>
+}
+
+
 impl ToMetadata for WebsocketChannelMemberLeaveEvent {
     fn get_metadata(&self) -> Metadata {
         Metadata {
@@ -230,6 +240,7 @@ ws_from_event_impl!(WebsocketReconnectUrlEvent, ReconnectUrl);
 ws_from_event_impl!(WebsocketEmojiChangedEvent, Emoji);
 ws_from_event_impl!(WebsocketChannelMemberJoinEvent, ChannelMemberJoin);
 ws_from_event_impl!(WebsocketChannelMemberLeaveEvent, ChannelMemberLeft);
+ws_from_event_impl!(WebsocketErrorEvent, WebsocketError);
 ws_message_from_event_impl!(WebsocketMessageReceivedEvent, Incoming);
 
 impl ToMetadata for WebsocketMessageReceivedEvent {
@@ -257,9 +268,10 @@ impl ToMetadata for WebsocketUserTypingEvent {
 
 impl ToMetadata for WebsocketReconnectUrlEvent {}
 impl ToMetadata for WebsocketEmojiChangedEvent {}
+impl ToMetadata for WebsocketErrorEvent {}
 
 impl_metadata_propagate!(WebsocketMessageEvent, Incoming);
-impl_metadata_propagate!(WebsocketEvent, Typing Message ReconnectUrl Emoji ChannelMemberJoin ChannelMemberLeft);
+impl_metadata_propagate!(WebsocketEvent, Typing Message ReconnectUrl Emoji ChannelMemberJoin ChannelMemberLeft WebsocketError);
 
 impl Into<Event> for WebsocketEvent {
     fn into(self) -> Event {

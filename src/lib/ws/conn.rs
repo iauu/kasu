@@ -3,7 +3,7 @@ use std::time::{Duration, Instant};
 use futures_util::{SinkExt, StreamExt};
 use tokio_tungstenite::connect_async;
 use tokio::sync::mpsc::{unbounded_channel, UnboundedReceiver, UnboundedSender};
-use crate::lib::ws::event::{WebsocketEvent, WebsocketReconnectUrlEvent};
+use crate::lib::ws::event::{WebsocketErrorEvent, WebsocketEvent, WebsocketReconnectUrlEvent};
 use thiserror::Error;
 use serde_json;
 use tokio_retry::strategy::jitter;
@@ -132,10 +132,14 @@ where T: AsyncSafe {
             retry = expo_backoff!();
             continue;
         }
-        tokio::time::sleep(retry.next().unwrap_or_else(|| {
+        let t = retry.next().unwrap_or_else(|| {
             tracing::error!("Missing websocket timeout value");
             Duration::from_secs(MAX_TIMEOUT)
-        })).await;
+        });
+        if t.as_secs() == MAX_TIMEOUT {
+            client.0.write().await.internal.write().await.ws_reconnect_url = None;
+        }
+        tokio::time::sleep(t).await;
     }
 }
 
@@ -143,4 +147,16 @@ where T: AsyncSafe {
 pub async fn set_reconnect(event: WebsocketReconnectUrlEvent, client: PartialClient) {
     tracing::info!("Websocket reconnect URL set to \'{}\'", event.url);
     client.write().await.ws_reconnect_url.replace(event.url.clone());
+}
+
+#[instrument(level = "info", skip(client), fields(module = module_path!()), target = "ws_reconnect_url_unset")]
+pub async fn unset_reconnect_url(event: WebsocketErrorEvent, client: PartialClient) {
+    if event.code == Some(1) || event.msg == Some("Socket URL has expired".to_string()) {
+        client.write().await.ws_reconnect_url = None;
+    }
+}
+
+#[instrument(level = "info", fields(module = module_path!()), target = "err_log")]
+pub async fn log_err(event: WebsocketErrorEvent) {
+    tracing::warn!("Websocket error logging event: {:?}", event);
 }
