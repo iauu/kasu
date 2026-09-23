@@ -3,7 +3,7 @@ use std::sync::Arc;
 use async_lock::RwLock;
 use slack_morphism::{SlackTeamId, SlackUserId};
 use crate::lib::api::APIClient;
-use crate::lib::context::AsyncSafe;
+use crate::lib::context::{AsyncSafe, ReduceState, StateTrait};
 use crate::lib::dispatcher::EventDispatcher;
 use crate::lib::handler::spawn_handler;
 
@@ -21,7 +21,7 @@ pub struct ClientState {
 
 #[derive(Debug)]
 pub struct ClientBase<T>
-where T: AsyncSafe {
+where T: StateTrait {
     pub internal: Arc<RwLock<ClientState>>,
     pub(crate) event_dispatcher: EventDispatcher<T>,
     pub state: T,
@@ -30,7 +30,7 @@ where T: AsyncSafe {
 pub type PartialClient = Arc<RwLock<ClientState>>;
 
 impl<T> Deref for ClientBase<T>
-where T: AsyncSafe {
+where T: StateTrait {
 
     type Target = RwLock<ClientState>;
 
@@ -41,10 +41,10 @@ where T: AsyncSafe {
 
 
 #[derive(Clone, Debug)]
-pub struct Client<T>(pub Arc<RwLock<ClientBase<T>>>) where T: AsyncSafe;
+pub struct Client<T>(pub Arc<RwLock<ClientBase<T>>>) where T: StateTrait;
 
 impl<T> Deref for Client<T>
-where T: AsyncSafe {
+where T: StateTrait {
 
     type Target = RwLock<ClientBase<T>>;
 
@@ -54,7 +54,7 @@ where T: AsyncSafe {
 }
 
 impl<T> ClientBase<T>
-where T: AsyncSafe {
+where T: StateTrait {
     pub(crate) fn get_xoxc(&self) -> String {
         self.read_blocking().xoxc_token.clone()
     }
@@ -86,7 +86,7 @@ where T: AsyncSafe {
 }
 
 impl<T> Client<T>
-where T: AsyncSafe {
+where T: StateTrait {
     pub(crate) fn get_xoxc(&self) -> String {
         self.read_blocking().get_xoxc()
     }

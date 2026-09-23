@@ -5,7 +5,7 @@ use slack_morphism::{SlackChannelId, SlackTs};
 use crate::lib::api::error::Error;
 use crate::lib::api::MessageData;
 use crate::lib::client::{Client, ClientState, PartialClient};
-use crate::lib::context::{AsyncSafe, AsyncTranslate, FromContext};
+use crate::lib::context::{AsyncSafe, AsyncTranslate, FromContext, ReduceState, StateTrait};
 use crate::lib::ctx_item::Messageable;
 use crate::lib::ctx_trait::Sendable;
 
@@ -16,7 +16,7 @@ pub struct PartialChannel {
 }
 
 impl<T> FromContext<T> for PartialChannel
-where T : AsyncSafe {
+where T : StateTrait {
     fn from_ctx(ctx: &crate::lib::context::Context<T>) -> Option<Self> {
         match ctx.channel_id.clone() {
             Some(channel_id) => Some(PartialChannel { channel_id, client: ctx.client.read_blocking().internal.clone() }),

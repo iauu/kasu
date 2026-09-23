@@ -1,13 +1,13 @@
 use tracing::instrument;
 use crate::lib::client::{Client, PartialClient};
 use crate::lib::cmd::CmdEvent;
-use crate::lib::context::{translate_to_ctx, AsyncSafe};
+use crate::lib::context::{translate_to_ctx, AsyncSafe, ReduceState, StateTrait};
 use crate::lib::ctx_trait::ToThreadTs;
 use crate::lib::event::Event;
 use crate::lib::ws::event::{WebsocketMessageReceivedEvent, WebsocketReconnectUrlEvent};
 
 #[instrument(level = "info", skip(client), fields(module = module_path!()), target = "cmd_handler")]
-pub async fn cmd_handler<T: AsyncSafe>(event: WebsocketMessageReceivedEvent, client: Client<T>) {
+pub async fn cmd_handler<T: StateTrait>(event: WebsocketMessageReceivedEvent, client: Client<T>) {
     if let Some(text) = event.text {
         let command;
         let arg_raw;

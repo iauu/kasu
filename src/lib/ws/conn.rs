@@ -10,7 +10,7 @@ use tokio_retry::strategy::jitter;
 use tokio_tungstenite::tungstenite::client::IntoClientRequest;
 use tracing::instrument;
 use crate::lib::client::{Client, PartialClient};
-use crate::lib::context::{translate_to_ctx, AsyncSafe};
+use crate::lib::context::{translate_to_ctx, AsyncSafe, ReduceState, StateTrait};
 use crate::lib::event::Event;
 use tokio::sync::mpsc::error::TryRecvError;
 use tokio_tungstenite::tungstenite::Message;
@@ -93,7 +93,7 @@ macro_rules! expo_backoff {
 
 #[instrument(level = "info", skip(client), fields(module = module_path!()), target = "ws_task")]
 pub async fn ws_task<T>(client: Client<T>) -> Infallible
-where T: AsyncSafe {
+where T: StateTrait {
     let mut retry = expo_backoff!();
     loop {
         let start = Instant::now();

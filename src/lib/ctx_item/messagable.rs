@@ -3,7 +3,7 @@ use slack_morphism::{SlackChannelId, SlackTs};
 use crate::lib::api::error::Error;
 use crate::lib::api::MessageData;
 use crate::lib::client::{Client, PartialClient};
-use crate::lib::context::{AsyncSafe, AsyncTranslate, FromContext};
+use crate::lib::context::{AsyncSafe, AsyncTranslate, FromContext, ReduceState, StateTrait};
 use crate::lib::ctx_trait::{Sendable, ThreadSendable};
 
 #[derive(Clone, Debug)]
@@ -15,7 +15,7 @@ pub struct Messageable {
 }
 
 impl<T> FromContext<T> for Messageable
-where T : AsyncSafe {
+where T : StateTrait {
     fn from_ctx(ctx: &crate::lib::context::Context<T>) -> Option<Self> {
         match (ctx.channel_id.clone(), ctx.message_ts.clone()) {
             (Some(channel_id), Some(message_ts)) => Some(

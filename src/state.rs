@@ -1,8 +1,9 @@
+use std::ops::Deref;
 use std::sync::Arc;
 use async_lock::RwLock;
 use sqlx::SqlitePool;
 use crate::lib::context;
-use crate::lib::context::{AsyncSafe, StateUnwrappedMarker};
+use crate::lib::context::{AsyncSafe, ReduceState, StateUnwrappedMarker};
 
 #[derive(Copy, Clone, Debug, Ord, PartialOrd, PartialEq, Eq)]
 pub enum Profile {
@@ -27,7 +28,25 @@ pub struct BotStateInternal {
 }
 
 
-pub type BotState = Arc<RwLock<BotStateInternal>>;
+#[derive(Clone, Debug)]
+pub struct BotState(pub Arc<RwLock<BotStateInternal>>);
+
+impl ReduceState<()> for BotState {
+    fn reduce(self) -> ()
+    where
+        Self: Sized,
+    {
+        
+    }
+}
+
+impl Deref for BotState {
+    type Target = RwLock<BotStateInternal>;
+    fn deref(&self) -> &Self::Target {
+        self.0.deref()
+    }
+}
+
 
 impl context::StateUnwrappedMarker for BotStateInternal {}
 

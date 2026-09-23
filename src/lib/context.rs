@@ -12,12 +12,28 @@ impl<T> AsyncSafe for T where T: Send + Sync + Clone + Debug + 'static {}
 
 
 /// Marker trait for the state struct
-pub trait StateMarker: AsyncSafe {}
+pub trait StateMarker: AsyncSafe + ReduceState<()> {}
 
 /// Marker trait for the state struct before applying Arc with access lock
 pub trait StateUnwrappedMarker: Send + Sync + Debug + 'static {}
 
 impl<T: StateMarker> StateUnwrappedMarker for T {}
+
+pub trait ReduceState<T> {
+    fn reduce(self) -> T where Self: Sized;
+}
+
+impl<X> ReduceState<X> for X {
+    fn reduce(self) -> X { self }
+}
+
+impl<T: StateMarker> ReduceState<()> for T {
+    fn reduce(self) -> () where Self: Sized {}
+}
+
+pub trait StateTrait : AsyncSafe + ReduceState<()> + ReduceState<Self> {}
+
+impl<T:AsyncSafe + ReduceState<()>> StateTrait for T {}
 
 macro_rules! extend_state {
     ( $( $t:ty ),* $( , )? ) => {
@@ -38,7 +54,7 @@ where T : AsyncSafe {
 
 #[derive(Clone, Debug)]
 pub struct Context<T>
-where T: AsyncSafe {
+where T: StateTrait {
     pub client: Client<T>,
     pub channel_id: Option<SlackChannelId>,
     pub thread_ts: Option<SlackTs>,
@@ -47,7 +63,7 @@ where T: AsyncSafe {
 }
 
 pub trait FromContext<T>: Send + Sync + 'static
-where T : AsyncSafe {
+where T : StateTrait {
     fn from_ctx(ctx: &Context<T>) -> Option<Self> where Self: Sized;
 }
 
@@ -56,29 +72,29 @@ pub(crate) trait AsyncTranslate {}
 
 #[async_trait::async_trait]
 pub trait TransformFromContext<T>: Send + Sync + 'static
-where T : AsyncSafe {
+where T : StateTrait {
     async fn transform_from_ctx(ctx: &Context<T>) -> Option<Self> where Self: Sized;
 }
 
 #[async_trait::async_trait]
-impl<X: AsyncSafe, T: FromContext<X> + AsyncTranslate> TransformFromContext<X> for T {
+impl<X: StateTrait, T: FromContext<X> + AsyncTranslate> TransformFromContext<X> for T {
     async fn transform_from_ctx(ctx: &Context<X>) -> Option<Self> {
         Self::from_ctx(ctx)
     }
 }
 
 impl<T> FromContext<T> for Context<T>
-where T: AsyncSafe {
+where T: StateTrait {
     fn from_ctx(ctx: &Context<T>) -> Option<Self> {
         Some(ctx.clone())
     }
 }
 
 impl<T> AsyncTranslate for Context<T>
-where T: AsyncSafe {}
+where T: StateTrait {}
 
 impl<T> FromContext<T> for Client<T>
-where T: AsyncSafe {
+where T: StateTrait {
     fn from_ctx(ctx: &Context<T>) -> Option<Self>
     {
         Some(ctx.client.clone())
@@ -86,10 +102,10 @@ where T: AsyncSafe {
 }
 
 impl<T> AsyncTranslate for Client<T>
-where T : AsyncSafe {}
+where T : StateTrait {}
 
 impl <T> FromContext<T> for PartialClient
-where T : AsyncSafe {
+where T : StateTrait {
     fn from_ctx(ctx: &Context<T>) -> Option<Self>
     where
         Self: Sized,
@@ -101,13 +117,13 @@ where T : AsyncSafe {
 impl AsyncTranslate for PartialClient {}
 
 pub async fn translate_to_ctx<T>(event: Event, client: Client<T>) -> (Event, Context<T>)
-where T: AsyncSafe {
+where T: StateTrait {
     let ctx = multi_to_ctx(&event, client).await;
     (event, ctx)
 }
 
 pub async fn multi_to_ctx<T>(multi: &impl ToMetadata, client: Client<T>) -> Context<T>
-where T: AsyncSafe {
+where T: StateTrait {
     Context {
         client: client.clone(),
         channel_id: multi.get_channel_id(),
@@ -131,7 +147,7 @@ where T: AsyncSafe {
 #[async_trait::async_trait]
 impl<X, T> TransformFromContext<X> for Option<T>
 where T: TransformFromContext<X>,
-      X: AsyncSafe {
+      X: StateTrait {
     async fn transform_from_ctx(ctx: &Context<X>) -> Option<Self>
     where
         Self: Sized
@@ -141,7 +157,7 @@ where T: TransformFromContext<X>,
 }
 
 impl<T> Context<T>
-where T: AsyncSafe {
+where T: StateTrait {
     pub async fn from(client: Client<T>, item: &impl ToMetadata) -> Self {
         multi_to_ctx(item, client).await
     }
@@ -159,7 +175,7 @@ impl<T> AsyncTranslate for T
 where T : StateMarker {}
 
 impl<T> FromContext<T> for State<T>
-where T : AsyncSafe {
+where T : StateTrait {
     fn from_ctx(ctx: &Context<T>) -> Option<Self>
     where
         Self: Sized,

@@ -1,13 +1,13 @@
 use std::future::Future;
 use async_trait::async_trait;
-use crate::lib::context::{AsyncSafe, Context};
+use crate::lib::context::{AsyncSafe, Context, ReduceState, StateTrait};
 use crate::lib::event::Event;
 use tokio::sync::broadcast::{Sender, Receiver};
 use crate::lib::dispatcher::EventDispatcher;
 
 #[async_trait]
 pub trait EventHandler<Args, Ret, T> : Send + Sync + Clone + 'static
-where T : AsyncSafe {
+where T : StateTrait {
     async fn run(&self, mut rx: Receiver<(Event, Context<T>)>) -> std::convert::Infallible {
         loop {
             let (event, context) = rx.recv().await.unwrap();
@@ -34,7 +34,7 @@ macro_rules! impl_event_handler {
                 Fut: Future<Output = R> + Send + 'static,
                 R: AnyRes + Send + Sync + 'static,
                 __event: $crate::lib::event::TransformFromEvent,
-                T: $crate::lib::context::AsyncSafe,
+                T: $crate::lib::context::AsyncSafe + $crate::lib::context::ReduceState<()>,
             $(
                 $arg_name: $crate::lib::context::TransformFromContext<T>,
             )*
@@ -60,7 +60,7 @@ macro_rules! impl_event_handler {
                 Fut: Future<Output = R> + Send + 'static,
                 R: AnyRes + Send + Sync + 'static,
                 __event: $crate::lib::cmd::event::TransFromEventCmd,
-                T: $crate::lib::context::AsyncSafe,
+                T: $crate::lib::context::AsyncSafe + $crate::lib::context::ReduceState<()>,
                 S: ToString + Send + Sync + Clone + 'static,
             $(
                 $arg_name: $crate::lib::context::TransformFromContext<T>,
@@ -105,7 +105,7 @@ multi_impl_event_handler!(A0 A1 A2 A3 A4 A5 A6 A7 A8 A9 A10 A11 A12 A13 A14);
 pub fn spawn_handler<Args, Ret, H, T>(dispatcher: &EventDispatcher<T>, handler: H)
 where
     H: EventHandler<Args, Ret, T>,
-    T: AsyncSafe
+    T: AsyncSafe + ReduceState<()>,
 {
     let rx = dispatcher.subscribe();
     tokio::task::spawn(async move {
