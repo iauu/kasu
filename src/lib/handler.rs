@@ -2,7 +2,7 @@ use std::future::Future;
 use async_trait::async_trait;
 use crate::lib::context::{AsyncSafe, Context, ReduceState, StateTrait};
 use crate::lib::event::Event;
-use tokio::sync::broadcast::{Sender, Receiver};
+use tokio::sync::broadcast::{Receiver};
 use crate::lib::dispatcher::EventDispatcher;
 
 #[async_trait]
@@ -34,7 +34,7 @@ macro_rules! impl_event_handler {
                 Fut: Future<Output = R> + Send + 'static,
                 R: AnyRes + Send + Sync + 'static,
                 __event: $crate::lib::event::TransformFromEvent,
-                T: $crate::lib::context::AsyncSafe + $crate::lib::context::ReduceState<()>,
+                T: $crate::lib::context::StateTrait,
             $(
                 $arg_name: $crate::lib::context::TransformFromContext<T>,
             )*
@@ -54,13 +54,14 @@ macro_rules! impl_event_handler {
 
             #[allow(non_snake_case, non_camel_case_types, unused)]
             #[async_trait]
-            impl <F, Fut, __event $(, $arg_name)*, R, T, S> EventHandler<(__event, $($arg_name ,)*), R, T>  for (S, F)
+            impl <F, Fut, __event $(, $arg_name)*, R, T, S, C> EventHandler<(__event, $($arg_name ,)*), $crate::lib::callback::Middleware<R, C, T>, T>  for (S, F)
             where
                 F: Fn(__event, $($arg_name,)*) -> Fut + Send + Sync + Clone + 'static,
-                Fut: Future<Output = R> + Send + 'static,
-                R: AnyRes + Send + Sync + 'static,
+                Fut: Future<Output = $crate::lib::callback::Middleware<R, C, T>> + Send + 'static,
+                R: Send + Sync + 'static,
+                C: $crate::lib::callback::Callback<R, T> + Send + Sync,
                 __event: $crate::lib::cmd::event::TransFromEventCmd,
-                T: $crate::lib::context::AsyncSafe + $crate::lib::context::ReduceState<()>,
+                T: $crate::lib::context::StateTrait,
                 S: ToString + Send + Sync + Clone + 'static,
             $(
                 $arg_name: $crate::lib::context::TransformFromContext<T>,
@@ -76,11 +77,13 @@ macro_rules! impl_event_handler {
                     )*
                     let handler = self.1.clone();
                     let join_handle = ::tokio::task::spawn(async move {
-                        let _ = (handler)(event, $([<$arg_name _a>], )*).await;
+                        let r: $crate::lib::callback::Middleware<R, C, T> = (handler)(event, $([<$arg_name _a>], )*).await;
+                        let _ = r.call_middleware(&context).await;
                     });
                     Some(())
                 }
             }
+
         }
     };
 }

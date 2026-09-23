@@ -2,6 +2,8 @@ use slack_morphism::SlackChannelId;
 use sqlx::Row;
 use tracing::instrument;
 use crate::lib::api::{ChannelRestriction, MessageData, SendRestriction};
+use crate::lib::callback::{Middleware, NoAction};
+use crate::lib::callback_impl::reply_in_thread::ReplyInThread;
 use crate::lib::client::PartialClient;
 use crate::lib::cmd::event::CmdParsedEvent;
 use crate::lib::context::State;
@@ -17,15 +19,14 @@ pub(crate) async fn init_channel(
     user: Option<PartialUser>,
     State::State(state): State<BotState>,
     partial_client: PartialClient
-) -> () {
+) -> Middleware<String, ReplyInThread, BotState> {
     let pool = state.read().await.db.clone();
     let channel = event.channel_id.get_channel_id().unwrap_or(messagable.channel_id.clone());
 
     let user = match user {
         Some(u) => u,
         None => {
-            let _ = messagable.reply_in_thread(MessageData::Raw("Unable to identify sender".to_string())).await;
-            return;
+            return "Unable to identify sender".to_string().into();
         }
     };
 
@@ -35,8 +36,7 @@ pub(crate) async fn init_channel(
 
     let existing_config: u32 = query_check_existing_config.get(0);
     if existing_config > 0 {
-        let _ = messagable.reply_in_thread(MessageData::Raw("This channel have already been registered".to_string())).await;
-        return;
+        return "This channel have already been registered".to_string().into()
     }
 
     let channel_managers = partial_client.read().await.api_client.get_channel_manager(channel.clone()).await;
@@ -45,19 +45,16 @@ pub(crate) async fn init_channel(
         Ok(x) => x,
         Err(e) => {
             tracing::error!("Failed to get channel managers: {}", e);
-            let _ = messagable.reply_in_thread(MessageData::Raw("Unable to identify channel manager".to_string())).await;
-            return;
+            return "Unable to identify channel manager".to_string().into()
         }
     };
 
     if !channel_managers.contains(&user.user_id) {
-        let _ = messagable.reply_in_thread(MessageData::Raw("Request failed: you are not a channel manager".to_string())).await;
-        return;
+        return "Request failed: you are not a channel manager".to_string().into()
     }
 
     if !channel_managers.contains(&partial_client.read().await.user_id) {
-        let _ = messagable.reply_in_thread(MessageData::Raw(format!("Add me <@{}> as a channel manager and rerun the command!", partial_client.read().await.user_id.0))).await;
-        return;
+        return format!("Add me <@{}> as a channel manager and rerun the command!", partial_client.read().await.user_id.0).into()
     }
 
     let _ = sqlx::query("INSERT INTO channel_managed (channel_id, config) VALUES (?, 31)")
@@ -78,5 +75,5 @@ pub(crate) async fn init_channel(
         allow_here_ping: true,
     }).await;
 
-    let _ = messagable.reply_in_thread(MessageData::Raw(format!("Setup completed with {} users added to whitelist", users.len()))).await;
+    format!("Setup completed with {} users added to whitelist", users.len()).into()
 }
