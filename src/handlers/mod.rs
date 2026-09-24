@@ -4,6 +4,7 @@ pub(crate) mod bot_msg_send;
 pub(crate) mod get_user_id;
 pub(crate) mod cmd_init;
 pub(crate) mod user_join_event;
+pub(crate) mod cmd_rm;
 
 /// Log the event and ignore failure. Error store in `e` and result store in `res`
 #[macro_export]

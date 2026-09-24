@@ -47,3 +47,41 @@ impl<T, C, S> From<T> for Middleware<T, C, S> where C: Callback<T, S>, S: StateT
         }
     }
 }
+
+
+macro_rules! create_into_pair {
+    ($lt:lifetime, $t1:ty, $t2:ty) => {
+        impl<$lt, C, S> ::core::convert::From<$t1> for $crate::lib::callback::Middleware<$t2, C, S>
+        where
+        C: $crate::lib::callback::Callback<$t2, S>,
+        S: $crate::lib::context::StateTrait,
+        String: ::core::convert::From<$t1>
+        {
+            fn from(value: $t1) -> Self {
+                Self {
+                    callback: C::new(),
+                    data: value.into(),
+                    _hidden: ::core::marker::PhantomData,
+                }
+            }
+        }
+    };
+    ($t1:ty, $t2:ty) => {
+        impl<C, S> ::core::convert::From<$t1> for $crate::lib::callback::Middleware<$t2, C, S>
+        where
+        C: $crate::lib::callback::Callback<$t2, S>,
+        S: $crate::lib::context::StateTrait,
+        String: ::core::convert::From<$t1>
+        {
+            fn from(value: $t1) -> Self {
+                Self {
+                    callback: C::new(),
+                    data: value.into(),
+                    _hidden: ::core::marker::PhantomData,
+                }
+            }
+        }
+    };
+}
+
+create_into_pair!('a, &'a str, String);

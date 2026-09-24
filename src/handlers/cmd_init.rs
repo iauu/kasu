@@ -15,13 +15,13 @@ use crate::state::BotState;
 #[instrument(level = "info", fields(module = module_path!()), target = "init_channel")]
 pub(crate) async fn init_channel(
     event: CmdParsedEvent<(Option<SlackChannelId>,)>,
-    messagable: Messageable,
+    messageable: Messageable,
     user: Option<PartialUser>,
     State::State(state): State<BotState>,
     partial_client: PartialClient
 ) -> Middleware<String, ReplyInThread, BotState> {
     let pool = state.read().await.db.clone();
-    let channel = event.channel_id.get_channel_id().unwrap_or(messagable.channel_id.clone());
+    let channel = event.channel_id.get_channel_id().unwrap_or(messageable.channel_id.clone());
 
     let user = match user {
         Some(u) => u,
