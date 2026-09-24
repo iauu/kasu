@@ -1,9 +1,10 @@
 use std::ops::Deref;
 use std::sync::Arc;
 use async_lock::RwLock;
+use slack_morphism::SlackUserId;
 use sqlx::SqlitePool;
 use crate::lib::context;
-use crate::lib::context::{AsyncSafe, ReduceState, StateUnwrappedMarker};
+use crate::lib::context::{ReduceState};
 
 #[derive(Copy, Clone, Debug, Ord, PartialOrd, PartialEq, Eq)]
 pub enum Profile {
@@ -24,7 +25,8 @@ impl Profile {
 pub struct BotStateInternal {
     pub last_message: std::time::Instant,
     pub current_pfp: Profile,
-    pub db: SqlitePool
+    pub db: SqlitePool,
+    pub ignore_list: Vec<SlackUserId>
 }
 
 
@@ -60,11 +62,12 @@ impl context::StateUnwrappedMarker for BotStateInternal {}
 // }
 
 impl BotStateInternal {
-    pub fn init(pool: SqlitePool) -> Self {
+    pub fn init(pool: SqlitePool, ignore_list: Vec<SlackUserId>) -> Self {
         Self {
             last_message: std::time::Instant::now(),
             current_pfp: Profile::Katie,
-            db: pool
+            db: pool,
+            ignore_list
         }
     }
 }

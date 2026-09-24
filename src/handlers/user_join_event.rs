@@ -20,6 +20,11 @@ pub(crate) async fn channel_join(
 ) -> ()  {
     let pool = state.read().await.db.clone();
 
+    if state.read().await.ignore_list.contains(&user.user_id) {
+        tracing::warn!("Ignored {} as they are part of the ignore list", user.user_id);
+        return;
+    }
+
     let has_enrolled = sqlx::query("SELECT COUNT(*) FROM channel_managed WHERE channel_id = ?")
         .bind(channel.channel_id.0.clone())
         .fetch_one(&pool).await.unwrap();

@@ -1,7 +1,7 @@
 use tracing::Level;
 use crate::env::Env;
 use serde_env::from_env;
-use tracing::field::{Field, Visit};
+use tracing::field::{Visit};
 use crate::lib::client::Client;
 use urlencoding;
 
@@ -12,13 +12,12 @@ mod state;
 mod tasks;
 
 use std::io;
-use std::ptr::replace;
 use std::str::FromStr;
 use std::sync::Arc;
 use async_lock::RwLock;
 use cfg_if::cfg_if;
 use sqlx::sqlite::SqliteConnectOptions;
-use tracing_subscriber::{EnvFilter, prelude::*};
+use tracing_subscriber::{prelude::*};
 use crate::handlers::user_join_event::channel_join;
 use crate::lib::handler::spawn_handler;
 use crate::state::{BotState, BotStateInternal};
@@ -100,7 +99,7 @@ async fn main() {
 
     let pool = sqlx::sqlite::SqlitePool::connect_with(options).await.unwrap();
     
-    let state = BotState(Arc::new(RwLock::new(BotStateInternal::init(pool))));
+    let state = BotState(Arc::new(RwLock::new(BotStateInternal::init(pool, env.ignore_list))));
 
     let client: Client<BotState> = Client::new_with_state(env.sub_xoxc, env.xoxc, env.xoxd, env.host, env.team_id, state.clone(), env.user_id);
 
