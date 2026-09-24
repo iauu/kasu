@@ -44,6 +44,10 @@ pub(crate) async fn remove_user(
         return "Request failed: you are not a channel manager".into()
     }
 
+    if channel_managers.contains(&user_id) {
+        return "Cannot remove channel manager (for safety reason), please remove them as channel manager manually first.".into()
+    }
+
     let query_check_existing_config = sqlx::query("SELECT COUNT(*) FROM channel_managed WHERE channel_id = ?")
         .bind(channel.0.clone())
         .fetch_one(&pool).await.unwrap();
