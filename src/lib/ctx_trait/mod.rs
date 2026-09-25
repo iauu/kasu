@@ -59,6 +59,15 @@ macro_rules! impl_metadata_propagate {
     };
 }
 
+#[macro_export]
+macro_rules! impl_metadata_empty {
+    ($($ev:ty)*) => {
+        $(
+            impl $crate::lib::ctx_trait::ToMetadata for $ev {}
+        )*
+    };
+}
+
 /// Implement To conversion trait
 #[macro_export]
 macro_rules! to_impl {

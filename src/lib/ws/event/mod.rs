@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use serde::{Deserialize, Serialize};
 use slack_morphism::{SlackAppId, SlackBotId, SlackChannelId, SlackChannelType, SlackClientMessageId, SlackEnterpriseId, SlackTeamId, SlackTs, SlackUserId};
-use crate::impl_metadata_propagate;
+use crate::{impl_metadata_empty, impl_metadata_propagate};
 use crate::lib::event::{Event, FromEvent};
 use crate::lib::blocks::SlackBlock;
 use crate::lib::ctx_trait::{Metadata, ToMetadata};
@@ -22,7 +22,9 @@ pub enum WebsocketEvent {
     #[serde(rename = "member_left_channel")]
     ChannelMemberLeft(WebsocketChannelMemberLeaveEvent),
     #[serde(rename = "error")]
-    WebsocketError(WebsocketErrorEvent)
+    WebsocketError(WebsocketErrorEvent),
+    #[serde(rename = "commands_changed")]
+    CommandsChanged(WebsocketCommandsChangedEvent)
 }
 
 impl FromEvent for WebsocketEvent {
@@ -137,6 +139,34 @@ pub enum WebsocketEmojiChangedEvent {
     }
 }
 
+#[derive(Clone, Debug, Deserialize)]
+pub struct CommandUpdateEntry {
+    usage: String,
+    #[serde(rename = "desc")]
+    description: String,
+    name: String,
+    #[serde(rename = "type", default)]
+    _internal_type: Option<String>, // "app"
+    #[serde(rename = "app")]
+    app_id: SlackAppId
+}
+
+#[derive(Clone, Debug, Deserialize)]
+pub struct CommandRemoveEntry {
+    name: String,
+    #[serde(rename = "type", default)]
+    _internal_type: Option<String>, // "app"
+    #[serde(rename = "app")]
+    app_id: SlackAppId
+}
+
+#[derive(Clone, Debug, Deserialize)]
+pub struct WebsocketCommandsChangedEvent {
+    #[serde(default)]
+    pub commands_updated: Vec<CommandUpdateEntry>,
+    #[serde(default)]
+    pub commands_removed: Vec<CommandRemoveEntry>
+}
 
 // #[derive(Clone, Debug, Deserialize)]
 // pub struct WebsocketMessageSubtypedEvent {
@@ -241,6 +271,7 @@ ws_from_event_impl!(WebsocketEmojiChangedEvent, Emoji);
 ws_from_event_impl!(WebsocketChannelMemberJoinEvent, ChannelMemberJoin);
 ws_from_event_impl!(WebsocketChannelMemberLeaveEvent, ChannelMemberLeft);
 ws_from_event_impl!(WebsocketErrorEvent, WebsocketError);
+ws_from_event_impl!(WebsocketCommandsChangedEvent, CommandsChanged);
 ws_message_from_event_impl!(WebsocketMessageReceivedEvent, Incoming);
 
 impl ToMetadata for WebsocketMessageReceivedEvent {
@@ -266,12 +297,10 @@ impl ToMetadata for WebsocketUserTypingEvent {
     }
 }
 
-impl ToMetadata for WebsocketReconnectUrlEvent {}
-impl ToMetadata for WebsocketEmojiChangedEvent {}
-impl ToMetadata for WebsocketErrorEvent {}
 
+impl_metadata_empty!(WebsocketReconnectUrlEvent WebsocketEmojiChangedEvent WebsocketErrorEvent WebsocketCommandsChangedEvent);
 impl_metadata_propagate!(WebsocketMessageEvent, Incoming);
-impl_metadata_propagate!(WebsocketEvent, Typing Message ReconnectUrl Emoji ChannelMemberJoin ChannelMemberLeft WebsocketError);
+impl_metadata_propagate!(WebsocketEvent, Typing Message ReconnectUrl Emoji ChannelMemberJoin ChannelMemberLeft WebsocketError CommandsChanged);
 
 impl Into<Event> for WebsocketEvent {
     fn into(self) -> Event {
