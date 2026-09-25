@@ -1,4 +1,5 @@
 use std::convert::Infallible;
+use std::thread::scope;
 use std::time::{Duration, Instant};
 use futures_util::{SinkExt, StreamExt};
 use tokio_tungstenite::connect_async;
@@ -95,42 +96,40 @@ macro_rules! expo_backoff {
 pub async fn ws_task<T>(client: Client<T>) -> Infallible
 where T: StateTrait {
     let mut retry = expo_backoff!();
-    loop {
+    'main: loop {
         let start = Instant::now();
-        let conn = connect_ws(
-            client.get_xoxc(),
-            client.get_xoxd(),
-            client.get_ws_connecting_url().await
-        ).await;
-        match conn {
-            Ok(mut rx) => {
-                'conn_loop: loop {
-                    let message = match rx.try_recv() {
-                        Ok(message) => message,
-                        Err(e) => {
-                            match e {
-                                TryRecvError::Empty => {
-                                    tokio::time::sleep(Duration::from_millis(10)).await;
-                                    continue 'conn_loop;
-                                },
-                                e @ _ => {
-                                    tracing::error!(?e, "websocket error");
-                                    break 'conn_loop;
-                                }
-                            }
-                        }
-                    };
-                    let (event, context) = translate_to_ctx(message.into(), client.clone()).await;
-                    client.read().await.event_dispatcher.send(event, context);
-                }
-            },
-            Err(e) => {
-                tracing::error!("Websocket connection error: {}", e);
+        'conn: {
+            let conn = connect_ws(
+                client.get_xoxc(),
+                client.get_xoxd(),
+                client.get_ws_connecting_url().await,
+            ).await
+                .map_err(|e| {
+                    tracing::error!("Websocket connection error: {}", e);
+                })
+                .ok();
+            let Some(mut rx) = conn else {
+                break 'conn;
+            };
+            'recv_loop: loop {
+                let message = match rx.try_recv() {
+                    Ok(message) => message,
+                    Err(TryRecvError::Empty) => {
+                        tokio::time::sleep(Duration::from_millis(10)).await;
+                        continue 'recv_loop;
+                    }
+                    Err(e) => {
+                        tracing::error!(?e, "websocket error");
+                        break 'recv_loop;
+                    }
+                };
+                let (event, context) = translate_to_ctx(message.into(), client.clone()).await;
+                client.read().await.event_dispatcher.send(event, context);
             }
         }
         if start.elapsed().as_secs_f32() > 30f32 {
             retry = expo_backoff!();
-            continue;
+            continue 'main;
         }
         let t = retry.next().unwrap_or_else(|| {
             tracing::error!("Missing websocket timeout value");
