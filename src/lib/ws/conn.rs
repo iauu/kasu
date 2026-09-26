@@ -111,21 +111,14 @@ where T: StateTrait {
             let Some(mut rx) = conn else {
                 break 'conn;
             };
-            'recv_loop: loop {
-                let message = match rx.try_recv() {
-                    Ok(message) => message,
-                    Err(TryRecvError::Empty) => {
-                        tokio::time::sleep(Duration::from_millis(10)).await;
-                        continue 'recv_loop;
-                    }
-                    Err(e) => {
-                        tracing::error!(?e, "websocket error");
-                        break 'recv_loop;
-                    }
+            loop {
+                let Some(message) = rx.recv().await else {
+                    tracing::error!("websocket disconnected");
+                    break 'conn;
                 };
                 let (event, context) = translate_to_ctx(message.into(), client.clone()).await;
                 client.read().await.event_dispatcher.send(event, context);
-            }
+            };
         }
         if start.elapsed().as_secs_f32() > 30f32 {
             retry = expo_backoff!();
