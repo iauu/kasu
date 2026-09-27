@@ -141,23 +141,23 @@ pub enum WebsocketEmojiChangedEvent {
 
 #[derive(Clone, Debug, Deserialize)]
 pub struct CommandUpdateEntry {
-    usage: String,
+    pub usage: String,
     #[serde(rename = "desc")]
-    description: String,
-    name: String,
+    pub description: String,
+    pub name: String,
     #[serde(rename = "type", default)]
     _internal_type: Option<String>, // "app"
     #[serde(rename = "app")]
-    app_id: SlackAppId
+    pub app_id: SlackAppId
 }
 
 #[derive(Clone, Debug, Deserialize)]
 pub struct CommandRemoveEntry {
-    name: String,
+    pub name: String,
     #[serde(rename = "type", default)]
     _internal_type: Option<String>, // "app"
     #[serde(rename = "app")]
-    app_id: SlackAppId
+    pub app_id: SlackAppId
 }
 
 #[derive(Clone, Debug, Deserialize)]

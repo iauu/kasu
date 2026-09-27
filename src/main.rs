@@ -99,7 +99,7 @@ async fn main() {
 
     let pool = sqlx::sqlite::SqlitePool::connect_with(options).await.unwrap();
     
-    let state = BotState(Arc::new(RwLock::new(BotStateInternal::init(pool, env.ignore_list))));
+    let state = BotState(Arc::new(RwLock::new(BotStateInternal::init(pool, env.ignore_list, env.new_slash_cmd))));
 
     let client: Client<BotState> = Client::new_with_state(env.sub_xoxc, env.xoxc, env.xoxd, env.host, env.team_id, state.clone(), env.user_id);
 
@@ -109,6 +109,7 @@ async fn main() {
     spawn_handler(&client.read().await.event_dispatcher, ("k!init", handlers::cmd_init::init_channel));
     spawn_handler(&client.read().await.event_dispatcher, ("k!rm", handlers::cmd_rm::remove_user));
     spawn_handler(&client.read().await.event_dispatcher, channel_join);
+    spawn_handler(&client.read().await.event_dispatcher, handlers::slash_cmd_event::slash_cmd_change);
 
     cfg_if! {
         if #[cfg(feature = "photo")] {

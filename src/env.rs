@@ -1,5 +1,5 @@
 use serde::{Deserialize, Deserializer};
-use slack_morphism::{SlackTeamId, SlackUserId};
+use slack_morphism::{SlackChannelId, SlackTeamId, SlackUserId};
 
 #[derive(Clone, Deserialize)]
 pub struct Env {
@@ -11,6 +11,7 @@ pub struct Env {
     pub user_id: SlackUserId,
     #[serde(default, deserialize_with = "str_to_vec")]
     pub ignore_list: Vec<SlackUserId>,
+    pub new_slash_cmd: Option<SlackChannelId>
 }
 
 fn str_to_vec<'de, D, T>(deserializer: D) -> Result<Vec<T>, D::Error>
