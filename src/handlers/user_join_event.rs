@@ -84,21 +84,24 @@ pub(crate) async fn channel_join(
     }
 
     if allowed {
-
-        let accepted: Vec<SlackUserId> = sqlx::query(
+        let client = partial_client.read().await;
+        let accepted_task = sqlx::query(
             "SELECT user_id FROM accepted WHERE channel_id = $1"
         )
             .bind(channel.channel_id.0.clone())
-            .fetch_all(&pool)
-            .await.unwrap()
+            .fetch_all(&pool);
+        let users_task = client.api_client.get_channel_members(channel.channel_id.clone());
+        let (accepted, users) = tokio::join!(accepted_task, users_task);
+        drop(client);
+
+        let accepted: Vec<SlackUserId> = accepted
+            .unwrap()
             .into_iter()
             .map(|row| row.get::<String, _>("user_id"))
             .map(|user_id| SlackUserId(user_id))
             .collect();
-
-        let users = partial_client.read().await.api_client.get_channel_members(channel.channel_id.clone()).await.unwrap();
-
         let intersection: Vec<SlackUserId> = users
+            .unwrap()
             .into_iter()
             .filter(|x| accepted.contains(x))
             .collect();
