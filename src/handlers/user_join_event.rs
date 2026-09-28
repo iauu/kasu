@@ -25,9 +25,21 @@ pub(crate) async fn channel_join(
         return;
     }
 
-    let has_enrolled = sqlx::query("SELECT COUNT(*) FROM channel_managed WHERE channel_id = ?")
+    let has_enrolled_task = sqlx::query("SELECT COUNT(*) FROM channel_managed WHERE channel_id = ?")
         .bind(channel.channel_id.0.clone())
-        .fetch_one(&pool).await.unwrap();
+        .fetch_one(&pool);
+    let client = partial_client.read().await;
+    let channel_managers_task = client.api_client.get_channel_manager(channel.channel_id.clone());
+    let accepted_task = sqlx::query(
+        "SELECT user_id FROM accepted WHERE channel_id = $1"
+    )
+        .bind(channel.channel_id.0.clone())
+        .fetch_all(&pool);
+
+    let (has_enrolled, channel_managers, accepted) = tokio::join!(has_enrolled_task, channel_managers_task, accepted_task);
+    drop(client);
+    let has_enrolled = has_enrolled.unwrap();
+    let accepted = accepted.unwrap();
 
     let enrolled: u32 = has_enrolled.get(0);
     if enrolled == 0 {
@@ -43,16 +55,9 @@ pub(crate) async fn channel_join(
         }
     };
 
-    let channel_managers = partial_client.read().await.api_client.get_channel_manager(channel.channel_id.clone()).await;
-
     let mut allowed = false;
 
-    let accepted: Vec<String> = sqlx::query(
-        "SELECT user_id FROM accepted WHERE channel_id = $1"
-    )
-        .bind(channel.channel_id.0.clone())
-        .fetch_all(&pool)
-        .await.unwrap()
+    let accepted: Vec<String> = accepted
         .into_iter()
         .map(|row| row.get::<String, _>("user_id"))
         .collect();
