@@ -12,9 +12,9 @@ use crate::lib::ctx_trait::{ThreadSendable, ToChannelId};
 use crate::lib::ws::event::WebsocketMessageReceivedEvent;
 use crate::state::BotState;
 
-#[instrument(level = "info", fields(module = module_path!()), target = "remove_user")]
-pub(crate) async fn remove_user(
-    event: CmdParsedEvent<(SlackUserId,)>,
+#[instrument(level = "info", fields(module = module_path!()), target = "set_perm")]
+pub(crate) async fn set_perm(
+    event: CmdParsedEvent<(String,)>,
     messageable: Messageable,
     sender: Option<PartialUser>,
     State::State(state): State<BotState>,
@@ -22,7 +22,6 @@ pub(crate) async fn remove_user(
 ) -> Middleware<String, ReplyInThread, BotState> {
     let pool = state.read().await.db.clone();
     let channel = event.channel_id.get_channel_id().unwrap_or(messageable.channel_id.clone());
-    let user_id = event.arg.0;
 
     let sender = match sender {
         Some(u) => u,
@@ -43,9 +42,12 @@ pub(crate) async fn remove_user(
     if !channel_managers.contains(&sender.user_id) {
         return "Request failed: you are not a channel manager".into()
     }
-
-    if channel_managers.contains(&user_id) {
-        return "Cannot remove channel manager (for safety reason), please remove them as channel manager manually first.".into()
+    
+    let Ok(perm_v) =  event.arg.0.parse::<u8>() else {
+        return "An integer must be input as the argument".into()
+    };
+    if perm_v >= 32 {
+        return "Input an integer between 0 to 31 (inclusive) as a permission value".into()
     }
 
     let query_check_existing_config = sqlx::query("SELECT COUNT(*) FROM channel_managed WHERE channel_id = ?")
@@ -57,18 +59,20 @@ pub(crate) async fn remove_user(
         return "This channel have already not been registered. Run `k!init` to register.".into()
     }
 
-    let rm_count = sqlx::query("DELETE FROM main.accepted WHERE channel_id = ? AND user_id = ?")
+    let up_count = sqlx::query("UPDATE main.channel_managed SET config = ? WHERE channel_id = ?")
+        .bind(perm_v)
         .bind(channel.0.clone())
-        .bind(user_id.0.clone())
         .execute(&pool).await;
-    let sql_rm_success = match rm_count {
+    let up_success = match up_count {
         Ok(v) => {
             v.rows_affected() > 0
         },
         Err(e) => false
     };
-
-    let slack_rm_success = partial_client.read().await.api_client.remove_user(channel, user_id).await.is_ok();
-
-    format!("Remove from slack channel: {}\nRemove from db: {}", slack_rm_success, sql_rm_success).into()
+    if up_success {
+        format!("Successfully set permission value to {perm_v}").into()
+    } else {
+        "Fail to set permission value".into()
+    }
+    
 }

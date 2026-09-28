@@ -110,6 +110,7 @@ async fn main() {
     spawn_handler(&client.read().await.event_dispatcher, ("k!rm", handlers::cmd_rm::remove_user));
     spawn_handler(&client.read().await.event_dispatcher, channel_join);
     spawn_handler(&client.read().await.event_dispatcher, handlers::slash_cmd_event::slash_cmd_change);
+    spawn_handler(&client.read().await.event_dispatcher, ("k!set", handlers::cmd_set::set_perm));
 
     cfg_if! {
         if #[cfg(feature = "photo")] {
