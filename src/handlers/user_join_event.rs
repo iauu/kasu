@@ -74,21 +74,12 @@ pub(crate) async fn channel_join(
             }
         };
 
-        match &event.inviter {
-            Some(inviter) => {
-                if channel_managers.contains(&inviter) {
-                    let _ = sqlx::query("INSERT INTO accepted (channel_id, user_id) VALUES (?, ?) ON CONFLICT DO NOTHING ")
-                        .bind(channel.channel_id.0.clone())
-                        .bind(user.user_id.0.clone())
-                        .execute(&pool).await.unwrap();
-                    allowed = true;
-                } else {
-                    let _ = channel.reply(MessageData::Raw(format!("Hi {core_info_str}, access have been blocked as this is a restricted channel."))).await;
-                }
-            },
-            None => {
-                let _ = channel.reply(MessageData::Raw(format!("Hi {core_info_str}, access have been blocked as this is a restricted channel."))).await;
-            }
+        if let Some(inviter) = &event.inviter && channel_managers.contains(&inviter) {
+            let _ = sqlx::query("INSERT INTO accepted (channel_id, user_id) VALUES (?, ?) ON CONFLICT DO NOTHING ")
+                .bind(channel.channel_id.0.clone())
+                .bind(user.user_id.0.clone())
+                .execute(&pool).await.unwrap();
+            allowed = true;
         }
     }
 
@@ -121,5 +112,6 @@ pub(crate) async fn channel_join(
         let _ = channel.reply(MessageData::Raw(format!("Hi {core_info_str}, welcome to stay here!"))).await;
     } else {
         let _ = partial_client.read().await.api_client.remove_user(channel.channel_id.clone(), user.user_id).await;
+        let _ = channel.reply(MessageData::Raw(format!("Hi {core_info_str}, access have been blocked as this is a restricted channel."))).await;
     }
 }
