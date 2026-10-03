@@ -128,7 +128,7 @@ where T: StateTrait {
             tracing::error!("Missing websocket timeout value");
             Duration::from_secs(MAX_TIMEOUT)
         });
-        if t.as_secs() == MAX_TIMEOUT {
+        if t.as_secs() > MAX_TIMEOUT / 2 {
             client.0.write().await.internal.write().await.ws_reconnect_url = None;
         }
         tokio::time::sleep(t).await;

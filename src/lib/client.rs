@@ -107,6 +107,7 @@ where T: StateTrait {
         spawn_handler(&self.read().await.event_dispatcher, crate::lib::ws::conn::set_reconnect);
         spawn_handler(&self.read().await.event_dispatcher, crate::lib::cmd::handler::cmd_handler);
         spawn_handler(&self.read().await.event_dispatcher, crate::lib::ws::conn::unset_reconnect_url);
+        spawn_handler(&self.read().await.event_dispatcher, crate::lib::ws::conn::log_err);
         // loop {
         //     tokio::task::yield_now().await;
         // }
